@@ -1,0 +1,5080 @@
+openapi: 3.0.0
+info:
+  title: Ulabox APIv2
+  version: '2.5.0'
+  description: |-
+    # Authentication
+
+    Required for every request, based on the client API key value. Provided in
+    the querystring (as `api_key`) or header (`Api-Key`)
+
+    # Customer Authorization
+
+    Required for some requests, based on the customer token value. Provided in
+    the querystring (as `customer_token`) or header (`Authorization`, with the
+    `Bearer ` prefix (separated with a space) on the value). To obtain this
+    token, a call to the `/auth/login` with the customer credentials must be
+    done.
+
+    # Old version
+
+    The APIv1 is deprecated but you can still see their documentation on
+    https://api.ulabox.com/doc/index.html?url=/doc/api_v1.yaml
+  contact:
+    name: Ulabox
+    url: 'https://ulabox.com'
+    email: tech@ulabox.com
+
+servers:
+  - url: 'https://api.ulabox.com/api/v2'
+    description: Prod
+  - url: 'https://api.ulabox.rocks/api/v2'
+    description: Dev
+
+tags:
+  - name: authentication
+    description: Auth related endpoints
+  - name: account
+  - name: banners
+  - name: brands
+  - name: carts
+  - name: categories
+  - name: campaigns
+  - name: delivery
+  - name: donation
+  - name: features
+  - name: markets
+  - name: manufacturers
+  - name: order
+  - name: payment
+  - name: platform
+  - name: products
+  - name: static
+  - name: translations
+  - name: url
+
+paths:
+  '/auth/login':
+    post:
+      tags:
+        - authentication
+      description: Authentication endpoint
+      summary: Customer login
+      operationId: customerLogin
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                email:
+                  description: Customer email
+                  type: string
+                pass:
+                  description: Customer password
+                  type: string
+              required:
+                - email
+                - pass
+            examples: {}
+      responses:
+        '200':
+          description: Successful authentication response
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  '/auth/login-facebook':
+    post:
+      tags:
+        - authentication
+      description: Authentication via Facebook endpoint
+      summary: Customer login via Facebook
+      operationId: customerLoginFacebook
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                access_token:
+                  description: Facebook Access Token
+                  type: string
+              required:
+                - access_token
+      responses:
+        '200':
+          description: Successful authentication response
+          content:
+            application/vnd.api+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/auth/refresh-customer-token':
+    get:
+      tags:
+        - authentication
+      description: Extends customer token expiry date
+      summary: Refresh customer token
+      operationId: refreshCustomerToken
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: customer_token
+          in: query
+          description: Current customer token
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful token refresh
+          content:
+            application/vnd.api+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuthResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/accounts/subscriptions/{subscriptionPlanId}':
+    post:
+      tags:
+        - account
+      operationId: subscribeToPlan
+      description: Subscribe customer to a aplan
+      summary: Subscribe customer to a aplan
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: subscriptionPlanId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/CreditcardDataRequest'
+        description: Payment info
+        required: true
+      responses:
+        '202':
+          description: Accepted the request to subscribe to plan
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+    delete:
+      tags:
+        - account
+      description: Cancel a subscription to a plan
+      summary: Cancel a subscription to a plan
+      operationId: cancelSubscription
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: subscriptionPlanId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Accepted the request to cancel a customer subscription
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  '/accounts/verify_email/{verificationToken}':
+    post:
+      tags:
+        - account
+      description: Verifies customer ownership (double opt-in)
+      summary: Customer verification (double opt-in)
+      operationId: verify
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: verificationToken
+          in: path
+          description: Verification token sent via email after `send-activation-email` request
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Accepted the account verification request
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/accounts/subscribe':
+    post:
+      tags:
+        - account
+      operationId: subscribeCustomer
+      description: Allows customer registration with reduced data field (aka express register)
+      summary: Customer reduced registration
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/SubscribeCustomer'
+        description: Required fields for the customer subscription
+        required: true
+      responses:
+        '201':
+          description: Successful response after a customer has been subscribed
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/accounts/subscriptions':
+    get:
+      tags:
+        - account
+      description: List customer subscriptions
+      summary: List customer subscriptions
+      operationId: getSubscriptions
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  '/accounts/reset-password':
+    post:
+      tags:
+        - account
+      operationId: resetCustomerPasswords
+      description: Customer password reset
+      summary: Customer password reset
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/ResetPassword'
+        description: Required fields for the password reset
+        required: true
+      responses:
+        '202':
+          description: Accepted the request to reset account password
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/accounts/reset-password-request':
+    post:
+      tags:
+        - account
+      operationId: resetCustomerPasswordRequest
+      description: Request customer password reset token
+      summary: Request customer password reset token
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+        description: Required fields for the password reset request
+        required: true
+      responses:
+        '202':
+          description: Accepted the request to reset account password
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/accounts/legal-age':
+    post:
+      tags:
+        - account
+      summary: Customer legal age confirmation
+      description: Specific confirmation from the customer that she is older than the Spanish legal age (18yo)
+      operationId: setHasLegalAge
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      responses:
+        '202':
+          description: Accepted the request to set the customer as of legal age
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/accounts/newsletter':
+    post:
+      tags:
+        - account
+      description: Customer newsletter enable
+      summary: Customer newsletter enable
+      operationId: newsletterSubscribe
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      responses:
+        '202':
+          description: Accepted the request to activate the newsletter subscription
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - account
+      description: Customer newsletter disable
+      summary: Customer newsletter disable
+      operationId: newsletterUnsubscribe
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      responses:
+        '202':
+          description: Accepted the request to cancel the newsletter subscription
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/accounts/credit-cards/{creditCardId}':
+    delete:
+      tags:
+        - account
+      summary: Remove customer credit card
+      description: Remove customer credit card
+      operationId: removeCreditCard
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: creditCardId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Accepted the request to remove a customer credit card
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/accounts/invitation-url':
+    get:
+      tags:
+        - account
+      operationId: getReferralUrl
+      description: Obtains the URL that the customer can use to obtain referrals from (member get member)
+      summary: Customer invitation URL
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      responses:
+        '200':
+          description: Accepted the request to change customer password
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/accounts/addresses/{addressId}/update-invoice-data':
+    put:
+      tags:
+        - account
+      description: Update customer address invoice data
+      summary: Update customer address invoice data
+      operationId: updateInvoiceData
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: addressId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/UpdateInvoiceData'
+        description: Required fields for the invoice data update
+        required: true
+      responses:
+        '202':
+          description: Accepted the request to update invoice data
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/accounts/addresses/{addressId}/update-lift-state':
+    put:
+      tags:
+        - account
+      summary: Updates the customer address lift flag
+      description: Updates the customer address lift flag
+      operationId: updateLift
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: addressId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: customer_token
+          in: query
+          description: Customer token taken from previous authentication
+          required: false
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/UpdateLift'
+        description: Required fields for the lift state update
+        required: true
+      responses:
+        '202':
+          description: Accepted the request to update lift state
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/accounts':
+    get:
+      tags:
+        - account
+      operationId: customerDetails
+      description: Obtains the customer account
+      summary: Obtains the customer account
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      responses:
+        '200':
+          description: Successful response after a customer information has been retrieved
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/CustomersResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags:
+        - account
+      operationId: patchPersonalData
+      description: Updates some customer account items partially
+      summary: Updates some customer account items partially
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/PatchPersonalData'
+        description: Required fields for the personal data update
+        required: true
+      responses:
+        '202':
+          description: Accepted the request to update personal data
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    put:
+      tags:
+        - account
+      operationId: updatePersonalData
+      description: Updates customer account data items in block
+      summary: Updates customer account data items in block
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/UpdatePersonalData'
+        description: Required fields for the personal data update
+        required: true
+      responses:
+        '202':
+          description: Accepted the request to update personal data
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  '/accounts/addresses':
+    post:
+      tags:
+        - account
+      operationId: registerAddress
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/RegisterAddress'
+        description: Required fields for the customer address creation
+        required: true
+      responses:
+        '202':
+          description: Accepted the request to register a new address
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      description: Account address list
+      summary: Account address list
+  '/accounts/register':
+    post:
+      tags:
+        - account
+      summary: Customer registration
+      description: Customer registration
+      operationId: registerCustomer
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+        description: Required fields for the password reset request
+        required: true
+      responses:
+        '201':
+          description: Successful response after a customer has been registered
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/accounts/send-activation-email':
+    post:
+      tags:
+        - account
+      operationId: sendActivationEmail
+      summary: Request customer activation (verifiy) email
+      description: Requests the activation (verifiy) email to be sent
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: customer_token
+          in: query
+          description: Customer token taken from previous authentication
+          required: false
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Accepted the request to send activation email
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/accounts/addresses/{addressId}':
+    put:
+      tags:
+        - account
+      description: Updates customer address
+      summary: Updates customer address
+      operationId: editAddress
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: addressId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/EditAddress'
+        description: Required fields for the edit of an address
+        required: true
+      responses:
+        '202':
+          description: Accepted the request to update address
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - account
+      description: Remove customer address
+      summary: Remove customer address
+      operationId: removeAddress
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: addressId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '202':
+          description: Accepted the request to register a new address
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /accounts/cancel:
+    post:
+      tags:
+        - account
+      summary: Cancel the customer account
+      description: Cancel the customer account
+      operationId: cancelCustomerAccount
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      responses:
+        '202':
+          description: Successful response after the customer account has been canceled
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /accounts/change-password:
+    post:
+      tags:
+        - account
+      description: Change customer password
+      summary: Change customer password
+      operationId: changePassword
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/ChangePassword'
+        description: Required fields to change the customer password
+        required: true
+      responses:
+        '202':
+          description: Accepted the request to change customer password
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  '/banners':
+    get:
+      tags:
+        - banners
+      description: Get banners list
+      summary: Get banners list
+      operationId: listAction
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      parameters:
+        - name: postal_code
+          in: query
+          description: 'The customer postal code while customer is not logged in'
+          required: false
+          schema:
+            type: string
+            example: '08001'
+      responses:
+        '200':
+          description: 'Successful response'
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/BannersResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  '/brands/{brandId}/products':
+    get:
+      tags:
+        - brands
+      description: 'Get products of a brand, including brand related data'
+      summary: 'Get products of a brand, including brand related data'
+      operationId: getBrandProducts
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      parameters:
+        - name: brandId
+          in: path
+          description: ID of the brand
+          required: true
+          schema:
+            type: integer
+        - name: page
+          in: query
+          description: 'Page number, default will be 1'
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: 'Max number of items to return, default will be 60'
+          schema:
+            type: integer
+            default: 60
+        - name: postal_code
+          in: query
+          description: The customer postal code while is not logged in
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/BrandProductsResponseLegacyEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  '/carts':
+    get:
+      tags:
+        - carts
+      description: Retrieves the current cart. Note that cartId could be innexistent
+      summary: Retrieves the current cart. Note that cartId could be innexistent
+      operationId: currentCartDetails
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cart_id
+          in: query
+          description: ID of the cart
+          required: false
+          schema:
+            type: integer
+        - name: persist
+          in: query
+          description: Do you want to persist the cart? Useful only on the first fetch
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response after a has been found
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/CartsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  '/carts/{cartId}/unmerge':
+    post:
+      tags:
+        - carts
+      description: Unmerge a cart
+      summary: Unmerge a cart
+      operationId: postCartUnmerge
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cartId
+          in: path
+          description: ID of the cart
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Compact Cart unmerged
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/CompactCartsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  '/carts/{cartId}/paypal-checkout':
+    post:
+      tags:
+        - carts
+      operationId: paypalCheckout
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cartId
+          in: path
+          description: Cart id that is going to be used to init a paypal checkout
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/PaypalCheckoutRequest'
+        description: Required parameters to init a paypal checkout
+        required: true
+      responses:
+        '201':
+          description: Successful response after initialize a paypal checkout
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/PaypalCheckoutResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      description: Initialize the cart checkout using paypal
+      summary: Initialize the cart checkout using paypal
+  '/carts/{cartId}/payment-method/{paymentMethod}':
+    post:
+      tags:
+        - carts
+      operationId: selectPaymentMethod
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cartId
+          in: path
+          description: Cart id for the cart tha is going to be modified
+          required: true
+          schema:
+            type: integer
+        - name: paymentMethod
+          in: path
+          description: Payment method that is going to be use to modify cart
+          required: true
+          schema:
+            type: string
+      responses:
+        '201':
+          description: Successful response after change payment method
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      description: Assign payment method to the cart
+      summary: Assign payment method to the cart
+  '/carts/{cartId}/start-checkout':
+    post:
+      tags:
+        - carts
+      description: Start the checkout of a given cart.
+      summary: Start the checkout of a given cart.
+      operationId: startCheckout
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cartId
+          in: path
+          description: ID of the cart
+          required: true
+          schema:
+            type: integer
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  '/carts/{cartId}/donation':
+    patch:
+      tags:
+        - carts
+      operationId: patchCartDonation
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cartId
+          in: path
+          description: The cart id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/AssignCartDonationRequest'
+        description: Required parameters to assign a donation to cart
+        required: true
+      responses:
+        '200':
+          description: Successful response after assign a donation to cart
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/CompactCartsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      description: Assign donation NGO to the cart
+      summary: Assign donation NGO to the cart
+    delete:
+      tags:
+        - carts
+      description: Remove NGO donation from cart
+      summary: Remove NGO donation from cart
+      operationId: deleteCartDonation
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cartId
+          in: path
+          description: The cart id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response after unassign a donation to cart
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/CompactCartsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  '/carts/{cartId}/order/{orderId}/merge':
+    get:
+      tags:
+        - carts
+      description: Check a cart merge with an order
+      summary: Check a cart merge with an order
+      operationId: getCartWithOrderMerge
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cartId
+          in: path
+          description: ID of the cart
+          required: true
+          schema:
+            type: integer
+        - name: orderId
+          in: path
+          description: ID of the order
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Products not mergeables
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/SimpleProductsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    post:
+      tags:
+        - carts
+      description: Merge a cart with an order
+      summary: Merge a cart with an order
+      operationId: postCartMergeWithOrder
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cartId
+          in: path
+          description: ID of the cart
+          required: true
+          schema:
+            type: integer
+        - name: orderId
+          in: path
+          description: ID of the order
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Compact Cart merged
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/CompactCartsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  '/carts/{cartId}/delivery':
+    put:
+      tags:
+        - carts
+      description: Assigns delivery data (slot) to cart
+      summary: Assigns delivery data (slot) to cart
+      operationId: defineDeliveryData
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cartId
+          in: path
+          description: The cart id to set delivery data to
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/DefineDeliveryData'
+        description: Required parameters to set cart delivery address
+        required: true
+      responses:
+        '202':
+          description: Successful response after delivery address has been updated
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/CartsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/carts/{cartId}/delivery-address':
+    put:
+      tags:
+        - carts
+      operationId: updateDeliveryAddress
+      description: Assign delivery address to cart
+      summary: Assign delivery address to cart
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cartId
+          in: path
+          description: Set the addres in the cart
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/UpdateDeliveryAddress'
+        description: Required parameters to set cart delivery address
+        required: true
+      responses:
+        '202':
+          description: Successful response after delivery address has been updated
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/CartsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/carts/{cartId}':
+    get:
+      tags:
+        - carts
+      description: Retrieves the current cart from the cart ID
+      summary: Retrieves the current cart from the cart ID
+      operationId: getCartDetailsById
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cartId
+          in: path
+          description: ID of the cart
+          required: true
+          schema:
+            anyOf:
+              - type: integer
+                minimum: 1
+                description: Cart Id
+              - type: string
+                description: Cart Secret
+      responses:
+        '200':
+          description: Successful response after a has been found
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/CartsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/carts/checkout':
+    post:
+      tags:
+        - carts
+      description: Checkout current cart
+      summary: Checkout current cart
+      operationId: cartCheckout
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/Checkout'
+        description: Required parameters to perform a Cart Checkout
+        required: true
+      responses:
+        '200':
+          description: Successful response after a checkout
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/Order'
+
+  '/carts/discounts':
+    post:
+      tags:
+        - carts
+      description: Apply an available customer discount to the cart
+      summary: Apply an available customer discount to the cart
+      operationId: applyDiscount
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/ApplyDiscountToCart'
+        description: Required parameters to apply a discount to the cart
+        required: true
+      responses:
+        '202':
+          description: Successful response after the discount has been applied to the cart
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/CompactCartsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      deprecated: true
+      tags:
+        - carts
+      description: Remove discount from applied discounts in the cart.     DEPRECATE as DELETE requests MUST NOT have a requestBody
+      summary: Remove discount from applied discounts in the cart.     DEPRECATE as DELETE requests MUST NOT have a requestBody
+      operationId: removeDiscountDeprecated
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      responses:
+        '202':
+          description: Successful response after a discount has been unapplied from the cart
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/CompactCartsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  '/carts/discounts/{discountId}':
+    delete:
+      tags:
+        - carts
+      description: Remove discount from applied discounts in the cart
+      summary: Remove discount from applied discounts in the cart
+      operationId: removeDiscount
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: discountId
+          in: path
+          description: ID of the product
+          required: true
+          schema:
+            type: integer
+      responses:
+        '202':
+          description: Successful response after a discount has been unapplied from the cart
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/CompactCartsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  '/carts/paypal-checkout/{cartId}':
+    get:
+      deprecated: true
+      tags:
+        - carts
+      description: Paypal checkout (deprecated)
+      summary: Paypal checkout (deprecated)
+      operationId: paypalCheckoutDeprecated
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cartId
+          in: path
+          description: The cart id going to be paid using PayPal
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response after a checkout
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/PaypalCheckoutResponse'
+
+  '/carts/products':
+    post:
+      tags:
+        - carts
+      description: Add product items to cart
+      summary: Add product items to cart
+      operationId: addCartItem
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/AddItemToCart'
+        description: Required parameters to add an item to the cart
+        required: true
+      responses:
+        '201':
+          description: Successful response after a product has been added to the cart
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/CompactCartsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/carts/{cartId}/from-order/{orderId}':
+    post:
+      tags:
+        - carts
+      description: Create a new cart from a given order
+      summary: Create a new cart from a given order
+      operationId: createCartFromOrderAction
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cartId
+          in: path
+          description: The cart to add products to
+          required: true
+          schema:
+            type: integer
+        - name: orderId
+          in: path
+          description: The order to retrieve products from
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Compact Cart merged
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/CompactCartsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags:
+        - carts
+      description: Add products from a given order to the cart
+      summary: Add products from a given order to the cart
+      operationId: addProductsToCartFromOrder
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cartId
+          in: path
+          description: The cart to add products to
+          required: true
+          schema:
+            type: integer
+        - name: orderId
+          in: path
+          description: The order to retrieve products from
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Compact Cart merged
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/CompactCartsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/categories/{categoryId}/products':
+    get:
+      tags:
+        - categories
+      description: Get category products
+      summary: Get category products
+      operationId: getCategoryProducts
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      parameters:
+        - name: categoryId
+          in: path
+          description: ID of the category
+          required: true
+          schema:
+            type: integer
+        - name: page
+          in: query
+          description: 'Page number, default will be 1'
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: 'Max number of items to return, default will be 60'
+          required: false
+          schema:
+            type: integer
+            default: 60
+        - name: postal_code
+          in: query
+          description: The customer postal code while customer is not logged in
+          required: false
+          schema:
+            type: string
+        - name: filters
+          in: query
+          description: Json-encoded filters array
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/SimpleProductsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/custom-query/{slug}/products':
+    get:
+      tags:
+        - campaigns
+      description: Get custom query products
+      summary: Get custom query products
+      operationId: getCustomQueryProducts
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      parameters:
+        - name: slug
+          in: path
+          description: Slug of the custom query
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: 'page number, default will be 1'
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: 'max number of items to return, default will be 60'
+          required: false
+          schema:
+            type: integer
+            default: 60
+        - name: postal_code
+          in: query
+          description: The customer postal code while is not logged in
+          required: false
+          schema:
+            type: integer
+        - name: filters
+          in: query
+          description: Json-encoded filters array
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/CustomQueryProductsResponseLegacyEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/deliveries/services':
+    get:
+      tags:
+        - delivery
+      description: Get the list of delivery services
+      summary: Get the list of delivery services
+      operationId: getDeliveryServices
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cart_id
+          in: query
+          description: ID of the current cart
+          required: true
+          schema:
+            type: integer
+        - name: address_id
+          in: query
+          description: ID of the customer address
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response
+          content:
+            aplication/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/DeliveryServicesResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  '/deliveries/available-services':
+    get:
+      tags:
+        - delivery
+      description: Get the list of delivery services
+      summary: Get the list of delivery services
+      operationId: getAvailableDeliveryServices
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      parameters:
+        - name: postal_code
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Available services
+          content:
+            aplication/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/AvailableDeliveryServicesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/deliveries/slots':
+    get:
+      tags:
+        - delivery
+      description: Get the list of delivery slots for a cart
+      summary: Get the list of delivery slots for a cart
+      operationId: getDeliverySlots
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cart_id
+          in: query
+          description: ID of the current cart
+          required: true
+          schema:
+            type: integer
+        - name: address_id
+          in: query
+          description: ID of the customer address
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response
+          content:
+            aplication/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/DeliverySlotsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/donation/ngos':
+    get:
+      tags:
+        - donation
+      description: Get the list of NGOs
+      summary: Get the list of NGOs
+      operationId: getDonationNgos
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      parameters:
+        - name: Accept-Language
+          in: header
+          description: Desired language of the NGOs
+          required: false
+          schema:
+            type: string
+            default: es
+            enum:
+              - es
+              - ca
+              - en
+      responses:
+        '200':
+          description: Successful response
+          content:
+            aplication/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/DonationNgosResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/features':
+    get:
+      tags:
+        - features
+      operationId: get-features
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: postalcode
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/_error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      description: Customer features
+      summary: Customer features
+
+  '/markets/availability':
+    get:
+      tags:
+        - markets
+      description: Get markets list availables in the provided postal code
+      summary: Get markets list availables in the provided postal code
+      operationId: marketAvailabilityAction
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      parameters:
+        - name: postal_code
+          in: query
+          description: The customer postal code
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/MarketResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/markets/{marketId}/stalls':
+    get:
+      tags:
+        - markets
+      description: Get stall list by market id
+      summary: Get stall list by market id
+      operationId: marketStallsAction
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      parameters:
+        - name: marketId
+          in: path
+          description: The market id
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/MarketStallsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  '/manufacturers/{manufacturerId}/brands':
+    get:
+      tags:
+        - manufacturers
+      description: Get the brands of a manufacturer
+      summary: Get the brands of a manufacturer
+      operationId: ManufacturerBrands
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      parameters:
+        - name: manufacturerId
+          in: path
+          description: ID of the manufacturer
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ManufacturerBrandsResponseLegacyEnvelope'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/orders/{orderId}/cancel':
+    post:
+      tags:
+        - order
+      operationId: cancelOrderAction
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: orderId
+          in: path
+          description: The order to apply the cancellation
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Accepted the request to cancel an order
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      description: Request an Order cancelation
+      summary: Request an Order cancelation
+
+  '/orders/{orderId}/products':
+    get:
+      tags:
+        - order
+      operationId: getOrderProducts
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: orderId
+          in: path
+          description: The order which to get the products details
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Accepted the request to get customer orders
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ProductsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      description: Obtain list of products of an order
+      summary: Obtain list of products of an order
+
+  '/orders/last-orders':
+    get:
+      tags:
+        - order
+      operationId: getLastCustomerOrders
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      responses:
+        '200':
+          description: Accepted the request to get customer orders
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/OrdersResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      description: List previous orders
+      summary: List previous orders
+
+  '/orders/reopenable':
+    get:
+      tags:
+        - order
+      operationId: getReopenableOrders
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      responses:
+        '200':
+          description: Accepted the request to get customer orders
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/OrdersResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      description: List orders that can be reopened
+      summary: List orders that can be reopened
+
+  '/payments/available-methods':
+    get:
+      tags:
+        - payment
+      description: List available payment methods
+      summary: List available payment methods
+      operationId: availableMethodsAction
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/vnd.api+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PaymentMethod'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  '/platform':
+    get:
+      tags:
+        - platform
+      description: Platform status
+      summary: Platform status
+      operationId: getPlatformStatus
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/vnd.api+json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlatformResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  '/products/{productId}':
+    get:
+      tags:
+        - products
+      description: Get product info
+      summary: Get product info
+      operationId: getProductDetails
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      parameters:
+        - name: productId
+          in: path
+          description: ID of the product
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Succcessful response
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/products/{productId}/alternatives':
+    get:
+      tags:
+        - products
+      description: Get products alternatives for a specific product
+      summary: Get products alternatives for a specific product
+      operationId: getProductAlternatives
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: productId
+          in: path
+          description: ID of the product
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ProductsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/products/{productId}/availability-notification':
+    post:
+      tags:
+        - products
+      description: Create a new notification alert for logged customer when product is available again
+      summary: Create a new notification alert for logged customer when product is available again
+      operationId: createProductAvailabilityNotification
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: productId
+          in: path
+          description: ID of the product
+          required: true
+          schema:
+            type: integer
+      responses:
+        '201':
+          description: Created Succcessfuly
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ProductResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/products/{productId}/related':
+    get:
+      tags:
+        - products
+      description: Get related products for a specific product
+      summary: Get related products for a specific product
+      operationId: getProductRelatedProducts
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: productId
+          in: path
+          description: ID of the product
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ProductsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/products/most-purchased':
+    get:
+      tags:
+        - products
+      description: Get products most purchased products
+      summary: Get products most purchased products
+      operationId: mostPurchasedProducts
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ProductsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/products/recommend':
+    get:
+      tags:
+        - products
+      description: Get products recommendation according to the given user and the preset
+      summary: Product recommendations
+      operationId: getProductsRecommendation
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: preset
+          in: query
+          description: The recommendation preset
+          required: true
+          schema:
+            type: string
+            enum:
+              - 'web:checkout:upsell'
+              - 'app:home:suggestions'
+              - 'app:home:basic_products'
+              - 'app:cart:empty'
+              - 'app:account:most_purchased'
+              - 'app:checkout:upsell'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/RecommendResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/products/search':
+    get:
+      tags:
+        - products
+      description: Get products according a search criteria
+      summary: Get products according a search criteria
+      operationId: productSearch
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      parameters:
+        - name: q
+          in: query
+          description: Search criteria
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          description: 'Page number, default will be 1'
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: 'Items per page, default will be 60'
+          required: false
+          schema:
+            type: integer
+            default: 60
+        - name: postal_code
+          in: query
+          description: 'The customer postal code while is not logged in'
+          required: false
+          schema:
+            type: string
+        - name: sort
+          in: query
+          description: 'The sorting and the direction, separated by a dot'
+          required: false
+          schema:
+            type: string
+            default: score.desc
+            enum:
+              - score.asc
+              - score.desc
+              - marca.asc
+              - marca.desc
+              - price_unit.asc
+              - price_unit.desc
+              - price.asc
+              - price.desc
+              - created_at.asc
+              - created_at.desc
+        - name: filters
+          in: query
+          description: 'Json formatted and urlencoded filters collection'
+          required: false
+          schema:
+            type: string
+            example: '%7B%22marca%22%3A%5B%22cool-brand%22%5D%7D'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/ProductsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/static/{slug}':
+    get:
+      tags:
+        - static
+      description: Retrieves a static page
+      summary: Retrieves a static page
+      operationId: getStaticPage
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      parameters:
+        - name: slug
+          in: path
+          description: _Slug_ of the static page
+          required: true
+          schema:
+            type: string
+            example: terms-and-conditions
+        - name: Accept-Language
+          in: header
+          description: Desired language of the requested static page
+          required: false
+          schema:
+            type: string
+            default: es
+            enum:
+              - es
+              - ca
+              - en
+      responses:
+        '200':
+          description: Successful response after a has been found
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/StaticPageResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/translations/{locale}':
+    get:
+      tags:
+        - translations
+      description: Obtain translation
+      summary: Obtain translation
+      operationId: translationLiterals
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      parameters:
+        - name: locale
+          in: path
+          description: Customer language
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: All literals
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  '/url/metadata':
+    get:
+      tags:
+        - url
+      description: Get url metadata
+      summary: Get url metadata
+      operationId: metadataAction
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      parameters:
+        - name: url
+          in: query
+          description: The url
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/UrlMetadataResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  securitySchemes:
+    ApiKeyParam:
+      description: '**DEPRECATED**. API Key provided by Ulabox used as a querystring parameter'
+      type: apiKey
+      name: api_key
+      in: query
+      x-name: ApiKeyInQuerystring
+    ApiKeyHeader:
+      description: '**REQUIRED if ApiKeyParam not used**. API Key provided by Ulabox used as a HTTP header'
+      type: apiKey
+      name: Api-Key
+      in: header
+      x-name: ApiKeyInHeader
+    CustomerSecurity:
+      description: "Customer token provided by succesful `/auth/login` call response'"
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    UrlMetadata_filters:
+      description: UrlMetadata_filters
+      properties:
+        filter:
+          type: string
+        slug:
+          type: string
+    UpdateDeliveryAddress_data:
+      description: UpdateDeliveryAddress_data
+      properties:
+        type:
+          type: string
+          enum:
+            - cart
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/RemoveAddress_data_attributes'
+    PaymentMethod_data:
+      description: PaymentMethod_data
+      properties:
+        name:
+          type: string
+        fee:
+          type: string
+        mandatory:
+          type: boolean
+    DeliverySlot_attributes:
+      description: DeliverySlot_attributes
+      properties:
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/Slot'
+    BannerAttributes_medias:
+      description: BannerAttributes_medias
+      properties:
+        image:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImageMedia'
+    RemoveAddress_data:
+      description: RemoveAddress_data
+      properties:
+        type:
+          type: string
+          enum:
+            - customer
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/RemoveAddress_data_attributes'
+    RemoveAddress_data_attributes:
+      description: RemoveAddress_data_attributes
+      required:
+        - address_id
+      properties:
+        address_id:
+          type: integer
+          description: address identifier
+    UpdateLift_data:
+      description: UpdateLift_data
+      properties:
+        type:
+          type: string
+          enum:
+            - customer
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/UpdateLift_data_attributes'
+    UpdateLift_data_attributes:
+      description: UpdateLift_data_attributes
+      required:
+        - address_id
+        - lift
+      properties:
+        address_id:
+          type: integer
+          description: Address containing the lift state to be updated
+        lift:
+          type: string
+          description: Lift state
+          enum:
+            - 'Yes'
+            - 'No'
+    UpdatePersonalData_data_attributes:
+      description: UpdatePersonalData_data_attributes
+      required:
+        - email
+        - first_name
+        - last_name
+        - postal_code
+        - sex
+      properties:
+        first_name:
+          type: string
+          description: Customer first name
+        last_name:
+          type: string
+          description: Customer last name
+        email:
+          type: string
+          description: Customer Email
+        postal_code:
+          type: string
+          description: Customer postal code
+        sex:
+          type: string
+          description: male/female
+          enum:
+            - '1'
+            - '2'
+    UpdatePersonalData_data:
+      description: UpdatePersonalData_data
+      properties:
+        type:
+          type: string
+          enum:
+            - customer
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/UpdatePersonalData_data_attributes'
+    PatchPersonalData_data:
+      description: PatchPersonalData_data
+      properties:
+        type:
+          type: string
+          enum:
+            - customer
+        id:
+          type: integer
+        attributes:
+          type: object
+          properties:
+            language:
+              type: string
+              description: Customer language
+              enum:
+                - es
+                - en
+                - ca
+    UpdateInvoiceData_data:
+      description: UpdateInvoiceData_data
+      properties:
+        type:
+          type: string
+          enum:
+            - customer
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/UpdateInvoiceData_data_attributes'
+    UpdateInvoiceData_data_attributes:
+      description: UpdateInvoiceData_data_attributes
+      required:
+        - address_id
+        - invoice_person_type
+        - nif
+      properties:
+        address_id:
+          type: integer
+          description: Address containing the invoice data to be updated
+        invoice_person_type:
+          type: string
+          description: "invoice person type when invoice requested -> allowed values ['legal','natural']"
+          enum:
+            - natural
+            - legal
+        nif:
+          type: string
+          description: invoice nif when invoice requested
+        company:
+          type: string
+          description: invoice company when invoice requested
+        invoice_name:
+          type: string
+          description: invoice name when invoice requested
+        invoice_first_surname:
+          type: string
+          description: customer first surname when invoice requested
+        invoice_second_surname:
+          type: string
+          description: customer second surname when invoice requested
+        invoice_email:
+          type: string
+          description: 'email used to send the invoices to, by default is the same as the customer email'
+    EditAddress_data:
+      description: EditAddress_data
+      properties:
+        type:
+          type: string
+          enum:
+            - customer
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/EditAddress_data_attributes'
+    EditAddress_data_attributes:
+      description: EditAddress_data_attributes
+      required:
+        - address_id
+        - city
+        - lift
+        - name
+        - phone
+        - postal_code
+        - street
+      properties:
+        address_id:
+          type: integer
+          description: address identifier
+        name:
+          type: string
+          description: address name
+        street:
+          type: string
+          description: street name
+        postal_code:
+          type: string
+          description: customer postal code
+        city:
+          type: string
+          description: customer city
+        phone:
+          type: string
+          description: customer phone
+        lift:
+          type: string
+          description: customer has lift or not
+          enum:
+            - 'Yes'
+            - 'No'
+        number:
+          type: string
+          description: street number
+        details:
+          type: string
+          description: address details
+        alias:
+          type: string
+          description: address alias
+        invoice_person_type:
+          type: string
+          description: "customer invoice person type when invoice requested -> allowed values ['legal','natural']"
+          enum:
+            - natural
+            - legal
+        nif:
+          type: string
+          description: invoice nif when invoice requested
+        company:
+          type: string
+          description: customer company when invoice requested
+        invoice_name:
+          type: string
+          description: customer name when invoice requested
+        invoice_first_surname:
+          type: string
+          description: customer first surname when invoice requested
+        invoice_second_surname:
+          type: string
+          description: customer second surname when invoice requested
+        invoice_email:
+          type: string
+          description: 'email used to send the invoices to, by default is the same as the customer email'
+    RegisterAddress_data:
+      description: RegisterAddress_data
+      properties:
+        type:
+          type: string
+          enum:
+            - address
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/RegisterAddress_data_attributes'
+    RegisterAddress_data_attributes:
+      description: RegisterAddress_data_attributes
+      required:
+        - city
+        - lift
+        - name
+        - phone
+        - postal_code
+        - street
+      properties:
+        name:
+          type: string
+          description: address name
+        street:
+          type: string
+          description: street name
+        postal_code:
+          type: string
+          description: customer postal code
+        city:
+          type: string
+          description: customer city
+        phone:
+          type: string
+          description: customer phone
+        lift:
+          type: string
+          description: customer has lift or not
+          enum:
+            - 'Yes'
+            - 'No'
+        number:
+          type: string
+          description: street number
+        details:
+          type: string
+          description: address details
+        alias:
+          type: string
+          description: address alias
+        invoice_person_type:
+          type: string
+          description: "customer invoice person type when invoice requested -> allowed values ['legal','natural']"
+          enum:
+            - natural
+            - legal
+        nif:
+          type: string
+          description: invoice nif when invoice requested
+        company:
+          type: string
+          description: customer company when invoice requested
+        invoice_name:
+          type: string
+          description: customer name when invoice requested
+        invoice_first_surname:
+          type: string
+          description: customer first surname when invoice requested
+        invoice_second_surname:
+          type: string
+          description: customer second surname when invoice requested
+        invoice_email:
+          type: string
+          description: 'email used to send the invoices to, by default is the same as the customer email'
+    SubscribeCustomer_data:
+      description: SubscribeCustomer_data
+      properties:
+        type:
+          type: string
+          enum:
+            - customer
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/SubscribeCustomer_data_attributes'
+    SubscribeCustomer_data_attributes:
+      description: SubscribeCustomer_data_attributes
+      required:
+        - email
+        - ip
+        - postalcode
+        - termandcon
+      properties:
+        email:
+          type: string
+          description: customer email
+        postalcode:
+          type: string
+          description: customer postal code
+        termandcon:
+          type: boolean
+          description: Does the customer accept our terms and conditions
+        ip:
+          type: string
+          description: customer registration ip
+        newsletter:
+          type: boolean
+          description: Newsletter active
+          default: false
+    RemoveDiscountFromCart_data_attributes:
+      description: RemoveDiscountFromCart_data_attributes
+      required:
+        - discount_id
+      properties:
+        discount_id:
+          type: string
+          description: Discount identifier to be unapplied
+    RemoveDiscountFromCart_data:
+      description: RemoveDiscountFromCart_data
+      properties:
+        type:
+          type: string
+          enum:
+            - cart
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/RemoveDiscountFromCart_data_attributes'
+    ApplyDiscountToCart_data_attributes:
+      description: ApplyDiscountToCart_data_attributes
+      required:
+        - discount_code
+      properties:
+        discount_code:
+          type: string
+          description: Discount code to be applied
+    ApplyDiscountToCart_data:
+      description: ApplyDiscountToCart_data
+      properties:
+        type:
+          type: string
+          enum:
+            - cart
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/ApplyDiscountToCart_data_attributes'
+    ChangePassword_data_attributes:
+      description: ChangePassword_data_attributes
+      required:
+        - new_password
+        - new_password_repeat
+        - old_password
+      properties:
+        old_password:
+          type: string
+          description: The current customer password to be changed
+        new_password:
+          type: string
+          description: The new password to be set
+        new_password_repeat:
+          type: string
+          description: The new password repetition
+    ChangePassword_data:
+      description: ChangePassword_data
+      properties:
+        type:
+          type: string
+          enum:
+            - customer
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/ChangePassword_data_attributes'
+    CancelSubscription_data_attributes:
+      description: CancelSubscription_data_attributes
+      required:
+        - subscription_id
+      properties:
+        subscription_id:
+          type: string
+          description: The subscription identifier
+    CancelSubscription_data:
+      description: CancelSubscription_data
+      properties:
+        type:
+          type: string
+          enum:
+            - customer
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/CancelSubscription_data_attributes'
+    RemoveCreditCard_data_attributes:
+      description: RemoveCreditCard_data_attributes
+      required:
+        - number
+        - type
+      properties:
+        number:
+          type: string
+          description: Last for digits of the credit card to be removed
+        type:
+          type: string
+          description: 'The credit card type (Visa, Mastercard,...)'
+        exp_year:
+          type: string
+          description: 'The credit card expiration year, in YY format. Requires expiry_month, optional for BC.'
+        exp_month:
+          type: string
+          description: 'The credit card expiration month, in MM format. Requires expiry_year, optional for BC.'
+    RemoveCreditCard_data:
+      description: RemoveCreditCard_data
+      properties:
+        type:
+          type: string
+          enum:
+            - customer
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/RemoveCreditCard_data_attributes'
+    RemoveItemFromCart_data_attributes:
+      description: RemoveItemFromCart_data_attributes
+      required:
+        - product_id
+      properties:
+        product_id:
+          type: string
+          description: Product identifier
+    RemoveItemFromCart_data:
+      description: RemoveItemFromCart_data
+      properties:
+        type:
+          type: string
+          enum:
+            - cart
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/RemoveItemFromCart_data_attributes'
+    Checkout_data_attributes:
+      description: Checkout_data_attributes
+      required:
+        - method
+      properties:
+        method:
+          type: string
+          description: Product identifier
+          enum:
+            - creditcard
+            - recurrent
+            - nopay
+        card_number:
+          type: string
+          description: Credit card number
+        card_holder:
+          type: string
+          description: "Credit card owner when 'creditcard' method is choosen"
+        cvv:
+          type: string
+          description: "Security code when 'creditcard' method is choosen"
+        exp_year:
+          type: string
+          description: "Credit card exiration year when 'creditcard' method is choosen"
+        exp_month:
+          type: string
+          description: "Credit card exiration month when 'creditcard' method is choosen"
+        remember:
+          type: boolean
+          description: Option to store the credit card
+        card:
+          type: string
+          description: "Last 4 digits of a stored credit card when 'recurrent' method is choosen"
+        password:
+          type: string
+          description: "Customer password if user is not fully authenticated when 'recurrent' method is choosen"
+    Checkout_data:
+      description: Checkout_data
+      properties:
+        type:
+          type: string
+          enum:
+            - cart
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/Checkout_data_attributes'
+    AddItemToCart_data_attributes:
+      description: AddItemToCart_data_attributes
+      required:
+        - product_id
+        - quantity
+      properties:
+        product_id:
+          type: string
+          description: Product identifier
+        quantity:
+          type: integer
+          description: Number of products to be added
+    AddItemToCart_data:
+      description: AddItemToCart_data
+      properties:
+        type:
+          type: string
+          enum:
+            - cart
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/AddItemToCart_data_attributes'
+    Cart_attributes:
+      description: Cart_attributes
+      properties:
+        coregister:
+          type: string
+        status:
+          type: integer
+        discounts:
+          type: array
+          items:
+            type: integer
+        number_lines:
+          type: integer
+        number_lines_inactive:
+          type: integer
+        number_products:
+          type: integer
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        gift_products:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        products_inactive:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        products_gift:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        total_products:
+          type: number
+        total_discounts:
+          type: number
+        total_balance:
+          type: number
+        total_shipping:
+          type: number
+        total_shipping_without_promo:
+          type: number
+        total_donation:
+          type: number
+        can_change_postalcode:
+          type: boolean
+        total:
+          type: number
+        shipping_fees_status:
+          type: integer
+        comments:
+          type: string
+        legalage:
+          type: boolean
+        ids:
+          type: array
+          items:
+            type: integer
+        remaining_customer_group:
+          type: integer
+        customer_group_total:
+          type: number
+        notifications:
+          type: array
+          items:
+            type: string
+        donation_base:
+          type: number
+        customer_id:
+          type: integer
+        postalcode:
+          type: string
+        delivery_address_id:
+          type: integer
+        invoice_address_id:
+          type: integer
+        service_id:
+          type: integer
+        slot_id:
+          type: integer
+        slot_type:
+          type: string
+        delivery_date:
+          type: string
+        delivery_start:
+          type: string
+        delivery_end:
+          type: string
+        reopened_order_id:
+          type: integer
+        is_reopened:
+          type: boolean
+        hide_customer_group_balance:
+          type: boolean
+        donation_ngo:
+          type: integer
+        donation_units:
+          type: integer
+        is_reopenable:
+          type: boolean
+        subscriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionBasket'
+        total_subscription_plans:
+          type: number
+    Category_attributes:
+      description: Category_attributes
+      properties:
+        parent_id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        depth:
+          type: integer
+        active:
+          type: boolean
+        image:
+          type: string
+        media:
+          $ref: '#/components/schemas/ImageMedia'
+        number_products:
+          type: integer
+        position:
+          type: integer
+        parents:
+          type: array
+          items:
+            type: integer
+        all_parents:
+          type: array
+          items:
+            type: integer
+        children:
+          $ref: '#/components/schemas/Children'
+    SimpleProduct_attributes:
+      description: SimpleProduct_attributes
+      properties:
+        ean13:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        active:
+          type: boolean
+        price:
+          type: string
+          format: number
+        old_price:
+          type: string
+          format: number
+        tags:
+          type: array
+          items:
+            type: integer
+        is_promo:
+          type: boolean
+        promo:
+          type: string
+        measurement_unit:
+          type: string
+          enum:
+            - ud.
+            - l.
+            - cl.
+            - ml.
+            - gr.
+            - g.
+            - kg.
+        unit_quantity:
+          type: integer
+        price_measurement_unit:
+          type: string
+          enum:
+            - ud.
+            - l.
+            - cl.
+            - ml.
+            - gr.
+            - g.
+            - kg.
+        price_unit:
+          type: integer
+        brand:
+          $ref: '#/components/schemas/ProductBrand'
+        manufacturer:
+          type: string
+        medias:
+          $ref: '#/components/schemas/SubscriptionBasketAttributes_medias'
+    RecommendResponse:
+      description: RecommendResponse
+      required:
+        - data
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        included:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductWithMeta'
+    SubscriptionBasketAttributes_medias:
+      description: SubscriptionBasketAttributes_medias
+      properties:
+        video:
+          type: array
+          items:
+            $ref: '#/components/schemas/VideoMedia'
+        image:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImageMedia'
+        main:
+          $ref: '#/components/schemas/ImageMedia'
+    _error_error:
+      description: _error_error
+      required:
+        - code
+        - message
+      properties:
+        message:
+          type: string
+        code:
+          type: integer
+    UrlMetadataResponse:
+      description: UrlMetadataResponse
+      properties:
+        data:
+          $ref: '#/components/schemas/UrlMetadata'
+    ProductResponse:
+      description: ProductResponse
+      properties:
+        data:
+          $ref: '#/components/schemas/Product'
+    ProductsResponse:
+      description: ProductsResponse
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+    PlatformResponse:
+      description: PlatformResponse
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Platform'
+    OrdersResponse:
+      description: OrdersResponse
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+    MarketStallsResponse:
+      description: MarketStallsResponse
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketStall'
+        included:
+          $ref: '#/components/schemas/Market'
+    MarketResponse:
+      description: MarketResponse
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Market'
+    DonationNgosResponse:
+      description: DonationNgosResponse
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Ngo'
+    AvailableDeliveryServicesResponse:
+      description: AvailableDeliveryServicesResponse
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SimpleDeliveryService'
+    DeliveryServicesResponse:
+      description: DeliveryServicesResponse
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeliveryService'
+    DeliverySlotsResponse:
+      description: DeliverySlotsResponse
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeliverySlot'
+    CompactCartsResponse:
+      description: CompactCartsResponse
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompactCart'
+    CartsResponse:
+      description: CartsResponse
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Cart'
+    SimpleProductsResponse:
+      description: SimpleProductsResponse
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SimpleProduct'
+    CategoriesResponse:
+      description: CategoriesResponse
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+    CustomersResponse:
+      description: CustomersResponse
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Customer'
+    UrlMetadata:
+      description: UrlMetadata
+      type: object
+      properties:
+        resource:
+          type: string
+          enum:
+            - category
+            - brand
+            - campaign
+            - manufacturer
+            - tag
+            - product
+            - search
+        id:
+          type: string
+        slug:
+          type: string
+        filters:
+          type: array
+          items:
+            $ref: '#/components/schemas/UrlMetadata_filters'
+        query:
+          type: object
+          properties: {}
+        locale:
+          type: string
+          enum:
+            - es
+            - ca
+    UpdateDeliveryAddress:
+      description: UpdateDeliveryAddress
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/UpdateDeliveryAddress_data'
+    SubscriptionAttributes:
+      description: SubscriptionAttributes
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum:
+            - Cancelled
+            - Valid
+            - Pending
+    Subscription:
+      description: Subscription
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - subscription
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/SubscriptionAttributes'
+    SubscriptionsResponse:
+      description: SubscriptionsResponse
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Subscription'
+    StaticPageAttributes:
+      description: StaticPageAttributes
+      type: object
+      required:
+        - content
+        - merchant
+        - slug
+        - title
+      properties:
+        slug:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+        merchant:
+          type: string
+        template:
+          type: string
+        banners:
+          type: array
+          items:
+            $ref: '#/components/schemas/Banner'
+    StaticPage:
+      description: StaticPage
+      type: object
+      required:
+        - attributes
+        - id
+        - type
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            - static
+        attributes:
+          $ref: '#/components/schemas/StaticPageAttributes'
+    StaticPageResponse:
+      description: StaticPageResponse
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/StaticPage'
+    Slot:
+      description: Slot
+      type: object
+      properties:
+        time_start:
+          type: string
+        time_end:
+          type: string
+        is_full:
+          type: boolean
+        is_now:
+          type: boolean
+    ResetPasswordRequest_data_attributes:
+      description: ResetPasswordRequest_data_attributes
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          description: email of the account to reset password
+    ResetPasswordRequest_data:
+      description: ResetPasswordRequest_data
+      properties:
+        attributes:
+          $ref: '#/components/schemas/ResetPasswordRequest_data_attributes'
+    ResetPassword_data_attributes:
+      description: ResetPassword_data_attributes
+      required:
+        - password
+        - token
+      properties:
+        password:
+          type: string
+          description: The new password
+        token:
+          type: string
+          description: The reset password token provided
+      x-examples: {}
+    ResetPassword_data:
+      description: ResetPassword_data
+      properties:
+        attributes:
+          $ref: '#/components/schemas/ResetPassword_data_attributes'
+    ResetPassword:
+      description: ResetPassword
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/ResetPassword_data'
+    ProductBrand:
+      description: ProductBrand
+      type: object
+      properties:
+        brand_id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+    PlatformAttributes:
+      description: PlatformAttributes
+      properties:
+        open:
+          type: boolean
+        closing_reason:
+          type: string
+          nullable: true
+        start_day:
+          type: string
+          format: date-time
+        end_day:
+          type: string
+          format: date-time
+        next_start_day:
+          type: string
+          format: date-time
+        next_end_day:
+          type: string
+          format: date-time
+        minimum_ticket:
+          type: number
+          format: float
+        cart_limit_units:
+          type: integer
+        tranches:
+          type: array
+          items:
+            type: object
+            properties:
+              upper_limit:
+                type: number
+                format: float
+              shipping_price:
+                type: number
+                format: float
+    Platform:
+      description: Platform
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - platform
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/PlatformAttributes'
+    PaypalCheckoutResponseAttributes:
+      description: PaypalCheckoutResponseAttributes
+      properties:
+        url:
+          type: string
+      example:
+        url: 'https://www.sandbox.paypal.com/webscr?cmd=_express-checkout-mobile&token=EC-80T46237T7103684A&useraction=commit'
+    PaypalCheckoutResponse:
+      description: PaypalCheckoutResponse
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - paypal_checkout_response
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/PaypalCheckoutResponseAttributes'
+    PaypalCheckoutAttributes:
+      description: PaypalCheckoutAttributes
+      type: object
+      properties:
+        is_mobile:
+          type: boolean
+        url_success:
+          type: string
+        url_cancel:
+          type: string
+      required:
+        - is_mobile
+        - url_success
+        - url_cancel
+    PaypalCheckout:
+      description: PaypalCheckout
+      type: object
+      required:
+        - attributes
+        - id
+        - type
+      properties:
+        type:
+          type: string
+          enum:
+            - paypal_checkout
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/PaypalCheckoutAttributes'
+    PaypalCheckoutRequest:
+      description: PaypalCheckoutRequest
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/PaypalCheckout'
+    PaymentMethod:
+      description: PaymentMethod
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/PaymentMethod_data'
+    OrderLine:
+      description: OrderLine
+      type: object
+      properties:
+        product_id:
+          type: integer
+        ean13:
+          type: string
+        name:
+          type: string
+        quantity:
+          type: integer
+        price:
+          type: number
+        medias:
+          type: array
+          items:
+            $ref: '#/components/schemas/ImageMedia'
+    OrderAttributes:
+      description: OrderAttributes
+      properties:
+        creation_date:
+          type: string
+        delivery_date:
+          type: string
+        delivery_time_start:
+          type: string
+        delivery_time_end:
+          type: string
+        address:
+          type: string
+        total_products:
+          type: string
+        total_discounts:
+          type: string
+        total_shipment:
+          type: string
+        total:
+          type: string
+        products:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderLine'
+        can_refund:
+          type: boolean
+        subscriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SubscriptionBasket'
+        total_subscription_plans:
+          type: number
+        status:
+          type: number
+          enum:
+            - 0
+            - 5
+            - 10
+            - 15
+            - 17
+            - 20
+            - 25
+            - 30
+            - 35
+            - 40
+            - 42
+            - 45
+            - 50
+          description: 'List of valid order statuses: 0  = NEW 5  = TRACKING_PENDING 10 = CAN_REOPEN 15 = CLOSED_REPOSITION 17 = BLOCKED 20 = STOCK_RESERVED 25 = IN_WAREHOUSE 30 = PICKING_IN_WAREHOUSE 35 = READY_IN_WAREHOUSE 40 = IN_DELIVERY 42 = INCIDENCE 45 = DELIVERED 50 = CANCELED'
+        merchant:
+          type: string
+          enum:
+            - ulabox
+            - damm
+            - spar1
+    Order:
+      description: Order
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - order
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/OrderAttributes'
+    MarketStallAttributes:
+      description: MarketStallAttributes
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+          nullable: true
+        product_count:
+          type: integer
+        banners:
+          type: array
+          items:
+            $ref: '#/components/schemas/Banner'
+        image:
+          $ref: '#/components/schemas/ImageMedia'
+        categories:
+          type: array
+          items:
+            type: object
+            properties:
+              category:
+                type: string
+        start_day:
+          type: string
+          format: date-time
+          nullable: true
+        end_day:
+          type: string
+          format: date-time
+          nullable: true
+    MarketStall:
+      description: MarketStall
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - marketstall
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/MarketStallAttributes'
+    MarketAttributes:
+      description: MarketAttributes
+      properties:
+        name:
+          type: string
+        images:
+          type: object
+          properties:
+            big:
+              type: string
+              example: 'https://www.ulabox.dev/img/markets/image_720x596.png'
+            small:
+              type: string
+              example: 'https://www.ulabox.dev/img/markets/image_720x596.png'
+    Market:
+      description: Market
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - market
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/MarketAttributes'
+    NgoAttributes:
+      description: NgoAttributes
+      properties:
+        name:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        donation_value:
+          type: string
+          format: number
+        round:
+          type: boolean
+    Ngo:
+      description: Ngo
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum:
+            - ngo
+        attributes:
+          $ref: '#/components/schemas/NgoAttributes'
+    DiscountAttributes:
+      description: DiscountAttributes
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+        expiration:
+          type: string
+        value:
+          type: integer
+        type:
+          type: integer
+    Discount:
+      description: Discount
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - discount
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/DiscountAttributes'
+    SimpleDeliveryServiceAttributes:
+      description: SimpleDeliveryServiceAttributes
+      type: object
+      properties:
+        name:
+          type: string
+    SimpleDeliveryService:
+      description: SimpleDeliveryService
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum:
+            - simple_delivery_service
+        attributes:
+          $ref: '#/components/schemas/SimpleDeliveryServiceAttributes'
+    DeliverySlot:
+      description: DeliverySlot
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - delivery_slot
+        day:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/DeliverySlot_attributes'
+    DeliveryServiceAttributes:
+      description: DeliveryServiceAttributes
+      properties:
+        slot_type:
+          type: string
+          enum:
+            - standard
+            - day_range
+            - virtual
+        service_name:
+          type: string
+        shipping:
+          type: string
+        slot_selection_enabled:
+          type: boolean
+        timeline:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeliverySlot'
+    DeliveryService:
+      description: DeliveryService
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum:
+            - delivery_service
+        attributes:
+          $ref: '#/components/schemas/DeliveryServiceAttributes'
+    DefineDeliveryDataDataAttributes:
+      description: DefineDeliveryDataDataAttributes
+      required:
+        - address_id
+        - delivery_date
+        - slot_id
+      properties:
+        address_id:
+          type: integer
+          description: Delivery address identifier
+        slot_id:
+          type: integer
+          description: Delivery slot identifier
+        delivery_date:
+          type: string
+          format: date
+          description: Delivery date
+        invoice_address_id:
+          type: integer
+          description: Address identifier where invoice will be delivered
+        comments:
+          type: string
+          description: Customer comments about the delivery
+        accept_substitutes:
+          type: string
+          enum:
+            - 'yes'
+            - 'no'
+          default: 'no'
+    DefineDeliveryDataData:
+      description: DefineDeliveryDataData
+      properties:
+        type:
+          type: string
+          enum:
+            - cart
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/DefineDeliveryDataDataAttributes'
+    DefineDeliveryData:
+      description: DefineDeliveryData
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/DefineDeliveryDataData'
+    CustomerAttributes:
+      description: CustomerAttributes
+      type: object
+      properties:
+        email:
+          type: string
+        postal_code:
+          type: string
+        invitation_url:
+          type: string
+        orders_count:
+          type: integer
+        addresses:
+          type: array
+          items:
+            $ref: '#/components/schemas/Address'
+        credit_cards:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomerCreditCard'
+        discounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Discount'
+        subscriptions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Subscription'
+        newsletter_subscription:
+          type: boolean
+        language:
+          type: string
+          enum:
+            - es
+            - ca
+            - en
+        default_credit_card:
+          type: integer
+    Customer:
+      description: Customer
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - customer
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/CustomerAttributes'
+    BannerAttributes:
+      description: BannerAttributes
+      type: object
+      required:
+        - legal_text1
+        - legal_text2
+        - meta
+        - name
+        - priority
+        - title
+        - type
+        - url
+      properties:
+        type:
+          type: integer
+        name:
+          type: string
+        url:
+          type: string
+        title:
+          type: string
+        legal_text1:
+          type: string
+        legal_text2:
+          type: string
+        priority:
+          type: integer
+        medias:
+          $ref: '#/components/schemas/BannerAttributes_medias'
+        meta:
+          $ref: '#/components/schemas/UrlMetadata'
+    Banner:
+      description: Banner
+      type: object
+      required:
+        - attributes
+        - id
+        - type
+      properties:
+        type:
+          type: string
+          enum:
+            - banner
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/BannerAttributes'
+    AssignCartDonationAttributes:
+      description: AssignCartDonationAttributes
+      type: object
+      required:
+        - donation_ngo
+        - donation_units
+      properties:
+        donation_ngo:
+          type: integer
+        donation_units:
+          type: integer
+    AssignCartDonationData:
+      description: AssignCartDonationData
+      type: object
+      required:
+        - attributes
+        - id
+        - type
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum:
+            - cart
+        attributes:
+          $ref: '#/components/schemas/AssignCartDonationAttributes'
+    AssignCartDonationRequest:
+      description: AssignCartDonationRequest
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/AssignCartDonationData'
+    AddressAttributes:
+      description: AddressAttributes
+      properties:
+        name:
+          type: string
+        postal_code:
+          type: string
+        city:
+          type: string
+        phone:
+          type: string
+        country:
+          type: string
+        state:
+          type: string
+        enabled:
+          type: boolean
+        number:
+          type: string
+        street:
+          type: string
+        lift:
+          type: string
+        details:
+          type: string
+        invoice_person_type:
+          type: string
+          enum:
+            - natural
+            - legal
+        nif:
+          type: string
+        company:
+          type: string
+        invoice_name:
+          type: string
+        invoice_first_surname:
+          type: string
+        invoice_second_surname:
+          type: string
+        invoice_email:
+          type: string
+    Address:
+      description: Address
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - address
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/AddressAttributes'
+    CustomerCreditCard:
+      description: CustomerCreditCard
+      type: object
+      properties:
+        id:
+          type: string
+        number:
+          type: string
+        type:
+          type: string
+        cardholder_name:
+          type: string
+        exp_year:
+          type: string
+        exp_month:
+          type: string
+    UpdatePersonalData:
+      description: UpdatePersonalData
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/UpdatePersonalData_data'
+    UpdateLift:
+      description: UpdateLift
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/UpdateLift_data'
+    UpdateInvoiceData:
+      description: UpdateInvoiceData
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/UpdateInvoiceData_data'
+    SubscribeCustomer:
+      description: SubscribeCustomer
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/SubscribeCustomer_data'
+    ResetPasswordRequest:
+      description: ResetPasswordRequest
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/ResetPasswordRequest_data'
+    RemoveAddress:
+      description: RemoveAddress
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/RemoveAddress_data'
+    RegisterAddress:
+      description: RegisterAddress
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/RegisterAddress_data'
+    PatchPersonalData:
+      description: PatchPersonalData
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/PatchPersonalData_data'
+    EditAddress:
+      description: EditAddress
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/EditAddress_data'
+    AuthResponse:
+      description: AuthResponse
+      type: object
+      properties:
+        data:
+          properties:
+            customer_token:
+              type: string
+              description: Customer token
+    Children:
+      description: Children
+      type: object
+      properties:
+        id:
+          type: integer
+    Content:
+      description: Content
+      type: object
+      properties:
+        title:
+          type: string
+        text:
+          type: string
+        type:
+          type: string
+          enum:
+            - json
+            - markdown
+    VideoMedia:
+      description: VideoMedia
+      type: object
+      properties:
+        code:
+          type: string
+    ImageMedia:
+      description: ImageMedia
+      type: object
+      properties:
+        path:
+          type: string
+        file:
+          type: string
+        ext:
+          type: string
+        sizes:
+          type: array
+          items:
+            type: string
+            enum:
+              - small
+              - home
+              - large
+              - thickbox
+              - s1
+              - s2
+              - m1
+              - l1
+              - xl
+              - fb2
+    RemoveDiscountFromCart:
+      description: RemoveDiscountFromCart
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/RemoveDiscountFromCart_data'
+    ApplyDiscountToCart:
+      description: ApplyDiscountToCart
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/ApplyDiscountToCart_data'
+    ChangePassword:
+      description: ChangePassword
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/ChangePassword_data'
+    CancelSubscription:
+      description: CancelSubscription
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/CancelSubscription_data'
+    RemoveCreditCard:
+      description: RemoveCreditCard
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/RemoveCreditCard_data'
+    RemoveItemFromCart:
+      description: RemoveItemFromCart
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/RemoveItemFromCart_data'
+    Checkout:
+      description: Checkout
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/Checkout_data'
+    AddItemToCart:
+      description: AddItemToCart
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/AddItemToCart_data'
+    CompactCartAttributes:
+      description: CompactCartAttributes
+      properties:
+        number_products:
+          type: integer
+        ids:
+          type: array
+          items:
+            type: integer
+        total_products:
+          type: integer
+        total_discounts:
+          type: integer
+        total_balance:
+          type: integer
+        total_shipping:
+          type: integer
+        total_donation:
+          type: integer
+        total:
+          type: integer
+    CompactCart:
+      description: CompactCart
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - compact_cart
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/CompactCartAttributes'
+    Cart:
+      description: Cart
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - cart
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/Cart_attributes'
+    Category:
+      description: Category
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - category
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/Category_attributes'
+    SimpleProduct:
+      description: SimpleProduct
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - product
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/SimpleProduct_attributes'
+    ProductAttributes:
+      description: ProductAttributes
+      type: object
+      required:
+        - active
+        - brand
+        - contents
+        - description
+        - ean13
+        - is_promo
+        - main_category_id
+        - manufacturer
+        - measurement_unit
+        - name
+        - old_price
+        - price
+        - price_measurement_unit
+        - price_unit
+        - promo
+        - raw_description
+        - slug
+        - tags
+        - unit_quantity
+      properties:
+        ean13:
+          type: string
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        raw_description:
+          type: string
+        contents:
+          type: array
+          items:
+            $ref: '#/components/schemas/Content'
+        active:
+          type: boolean
+        price:
+          type: string
+          format: number
+        old_price:
+          type: string
+          format: number
+        tags:
+          type: array
+          items:
+            type: integer
+        is_promo:
+          type: boolean
+        promo:
+          type: string
+        measurement_unit:
+          type: string
+          enum:
+            - ud.
+            - l.
+            - cl.
+            - ml.
+            - gr.
+            - g.
+            - kg.
+        unit_quantity:
+          type: integer
+        price_measurement_unit:
+          type: string
+          enum:
+            - ud.
+            - l.
+            - cl.
+            - ml.
+            - gr.
+            - g.
+            - kg.
+        price_unit:
+          type: integer
+        brand:
+          $ref: '#/components/schemas/ProductBrand'
+        manufacturer:
+          type: string
+        medias:
+          $ref: '#/components/schemas/SubscriptionBasketAttributes_medias'
+        main_category_id:
+          type: integer
+    ProductWithMeta:
+      description: ProductWithMeta
+      allOf:
+        - $ref: '#/components/schemas/Product'
+        - type: object
+          properties:
+            meta:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum:
+                    - super-promo
+    Product:
+      description: Product
+      type: object
+      required:
+        - attributes
+        - id
+        - type
+      properties:
+        type:
+          type: string
+          enum:
+            - product
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/ProductAttributes'
+    SubscriptionBasketAttributes:
+      description: SubscriptionBasketAttributes
+      type: object
+      required:
+        - name
+        - old_price
+        - price
+        - product_id
+        - uuid
+      properties:
+        uuid:
+          type: string
+        name:
+          type: string
+        price:
+          type: string
+          format: number
+        old_price:
+          type: string
+          format: number
+        medias:
+          $ref: '#/components/schemas/SubscriptionBasketAttributes_medias'
+        product_id:
+          type: integer
+        claim_url:
+          type: string
+    SubscriptionBasket:
+      description: SubscriptionBasket
+      type: object
+      required:
+        - attributes
+        - id
+        - type
+      properties:
+        type:
+          type: string
+          enum:
+            - subscription
+        id:
+          type: string
+        attributes:
+          $ref: '#/components/schemas/SubscriptionBasketAttributes'
+    ManufacturerAttributes:
+      description: ManufacturerAttributes
+      type: object
+      required:
+        - banner
+        - banners
+        - brand_count
+        - description
+        - image
+        - name
+        - slug
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        brand_count:
+          type: integer
+        description:
+          type: string
+        banner:
+          $ref: '#/components/schemas/Banner'
+        banners:
+          type: array
+          items:
+            $ref: '#/components/schemas/Banner'
+        image:
+          $ref: '#/components/schemas/ImageMedia'
+    Manufacturer:
+      description: Manufacturer
+      type: object
+      required:
+        - attributes
+        - id
+        - type
+      properties:
+        type:
+          type: string
+          enum:
+            - manufacturer
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/ManufacturerAttributes'
+    CustomQueryAttributes:
+      description: CustomQueryAttributes
+      type: object
+      required:
+        - banners
+        - name
+        - slug
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        banners:
+          type: array
+          items:
+            $ref: '#/components/schemas/Banner'
+    CustomQuery:
+      description: CustomQuery
+      type: object
+      required:
+        - attributes
+        - id
+        - type
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            - custom_query
+        attributes:
+          $ref: '#/components/schemas/CustomQueryAttributes'
+    CustomQueryProductsResponse:
+      description: CustomQueryProductsResponse
+      type: object
+      required:
+        - data
+        - included
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        included:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomQuery'
+          maxItems: 1
+        meta:
+          $ref: '#/components/schemas/ListMetadata'
+    CustomQueryProductsResponseLegacyEnvelope:
+      description: "Model that envelopes the response in a 'data' field to avoid breaking retro-compatibility."
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/CustomQueryProductsResponse'
+    BrandAttributes:
+      description: BrandAttributes
+      type: object
+      required:
+        - banners
+        - image
+        - logo
+        - name
+        - product_count
+        - slug
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        product_count:
+          type: integer
+        banners:
+          type: array
+          items:
+            $ref: '#/components/schemas/Banner'
+        logo:
+          $ref: '#/components/schemas/ImageMedia'
+        image:
+          $ref: '#/components/schemas/ImageMedia'
+    Brand:
+      description: Brand
+      type: object
+      required:
+        - attributes
+        - id
+        - type
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum:
+            - brand
+        attributes:
+          $ref: '#/components/schemas/BrandAttributes'
+    BannersResponse:
+      description: BannersResponse
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Banner'
+    CustomerFeature:
+      description: CustomerFeature
+      type: object
+      properties:
+        type:
+          type: string
+          enum:
+            - customer_feature
+        id:
+          type: string
+        attributes:
+          properties:
+            value:
+              anyOf:
+                - type: string
+                - type: boolean
+                - type: integer
+                - type: number
+          type: object
+    CreditcardDataAttributes:
+      description: CreditcardDataAttributes
+      required:
+        - card_number
+        - card_holder
+        - cvv
+        - exp_month
+        - exp_year
+      properties:
+        card_number:
+          type: string
+          description: Creditcard number
+        card_holder:
+          type: string
+          description: Creditcard owner
+        cvv:
+          type: string
+          description: Security code
+        exp_month:
+          type: string
+          description: Creditcard exiration month
+        exp_year:
+          type: string
+          description: Creditcard exiration year
+    CreditcardData:
+      description: CreditcardData
+      type: object
+      required:
+        - type
+        - attributes
+      properties:
+        type:
+          type: string
+          enum:
+            - creditcard_data
+        attributes:
+          $ref: '#/components/schemas/CreditcardDataAttributes'
+    CreditcardDataRequest:
+      description: CreditcardDataRequest
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/CreditcardData'
+    ListMetadata:
+      description: ListMetadata
+      type: object
+      required:
+        - count
+        - facets
+        - sort
+      properties:
+        count:
+          type: integer
+          description: Number of total items found using filters/facets; returned ones may be less because pagination.
+          minimum: 0
+        facets:
+          type: object
+          description: Facets available to be applied on the request.
+          properties: {}
+        sort:
+          type: array
+          description: Fields used in the sorting of the current request.
+          items:
+            type: string
+    BrandProductsResponse:
+      description: BrandProductsResponse
+      type: object
+      required:
+        - data
+        - included
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Product'
+        included:
+          type: array
+          items:
+            $ref: '#/components/schemas/Brand'
+          maxItems: 1
+        meta:
+          $ref: '#/components/schemas/ListMetadata'
+    BrandProductsResponseLegacyEnvelope:
+      description: "Model that envelopes the response in a 'data' field to avoid breaking retro-compatibility."
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/BrandProductsResponse'
+    ManufacturerBrandsResponse:
+      description: ManufacturerBrandsResponse
+      type: object
+      required:
+        - data
+        - included
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Brand'
+        included:
+          type: array
+          items:
+            $ref: '#/components/schemas/Manufacturer'
+          maxItems: 1
+        meta:
+          $ref: '#/components/schemas/ListMetadata'
+    ManufacturerBrandsResponseLegacyEnvelope:
+      description: "Model that envelopes the response in a 'data' field to avoid breaking retro-compatibility."
+      type: object
+      required:
+        - data
+      properties:
+        data:
+          $ref: '#/components/schemas/ManufacturerBrandsResponse'
+    RegisterCustomer_dataAttributes:
+      description: RegisterCustomer_dataAttributes
+      required:
+        - email
+        - password
+        - postal_code
+        - terms_and_cons
+      properties:
+        coregister:
+          type: string
+          description: Co-register information
+        email:
+          type: string
+          description: Email address
+        ip:
+          type: string
+          description: IP address
+          default: IP address from the current request
+        legal_age:
+          type: boolean
+          description: Confirms the legal age
+          default: false
+        locale:
+          type: string
+          enum:
+            - es
+            - en
+            - ca
+          description: Preferred language
+          default: es
+        metadata:
+          type: object
+          description: Extra customer metadata fields.
+          properties: {}
+        newsletter:
+          type: boolean
+          description: Newsletter active
+          default: false
+        password:
+          type: string
+          description: Customer password
+        postal_code:
+          type: string
+          description: Customer postal code
+        promotion:
+          type: string
+          description: Promotion code
+        referralinfo:
+          type: string
+          description: Referral information
+        terms_and_cons:
+          type: boolean
+          description: The customer accepts our terms and conditions
+    RegisterCustomerRequest:
+      description: RegisterCustomerRequest
+      type: object
+      properties:
+        data:
+          type: object
+          required:
+            - type
+            - id
+            - attributes
+          properties:
+            type:
+              type: string
+              enum:
+                - customer
+            id:
+              type: integer
+              nullable: true
+            attributes:
+              $ref: '#/components/schemas/RegisterCustomer_dataAttributes'
+
+    CustomerFeaturesResponse:
+      description: CustomerFeaturesResponse
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CustomerFeature'
+
+    _error:
+      description: _error
+      type: object
+      properties:
+        error:
+          $ref: '#/components/schemas/_error_error'
+
+  responses:
+    BadRequest:
+      description: The request does not have all the expected data or is not in the expected format
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/_error'
+    Conflict:
+      description: The request can not be applied
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/_error'
+    Forbidden:
+      description: 'Access Forbidden, you must authorize yourself with a customer token'
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/_error'
+    InternalError:
+      description: 'Internal Error. Something unexpected happened while processing the request, contact technical support'
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/_error'
+    NoContent:
+      description: No content
+    NotFound:
+      description: The requested item was not found
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/_error'
+    Unauthorized:
+      description: 'Unauthorized request: api_key and/or customer_token is missing or invalid'
+      content:
+        application/vnd.api+json:
+          schema:
+            $ref: '#/components/schemas/_error'
