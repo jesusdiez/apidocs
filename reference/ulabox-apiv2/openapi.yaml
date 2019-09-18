@@ -1,7 +1,7 @@
 openapi: 3.0.0
 info:
   title: Ulabox APIv2
-  version: '2.5.0'
+  version: 2.5.1
   description: |-
     # Authentication
 
@@ -24,37 +24,29 @@ info:
     name: Ulabox
     url: 'https://ulabox.com'
     email: tech@ulabox.com
-
 servers:
   - url: 'https://api.ulabox.com/api/v2'
     description: Prod
   - url: 'https://api.ulabox.rocks/api/v2'
     description: Dev
-
 tags:
   - name: authentication
-    description: Auth related endpoints
+    description: Auth related
   - name: account
-  - name: banners
-  - name: brands
-  - name: carts
-  - name: categories
-  - name: campaigns
-  - name: delivery
-  - name: donation
-  - name: features
-  - name: markets
-  - name: manufacturers
+    description: Customer account
+  - name: cart
+    description: Shopping cart management
+  - name: catalogue
+    description: 'Catalogue (products, brands...) related'
+  - name: checkout
+    description: Needed during the checkout process
   - name: order
-  - name: payment
-  - name: platform
-  - name: products
-  - name: static
-  - name: translations
-  - name: url
-
+    description: Existing orders
+  - name: other
+    description: Other useful information
+  - name: subscription
 paths:
-  '/auth/login':
+  /auth/login:
     post:
       tags:
         - authentication
@@ -93,7 +85,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
-  '/auth/login-facebook':
+  /auth/login-facebook:
     post:
       tags:
         - authentication
@@ -127,8 +119,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
-
-  '/auth/refresh-customer-token':
+  /auth/refresh-customer-token:
     get:
       tags:
         - authentication
@@ -160,403 +151,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
-
-  '/accounts/subscriptions/{subscriptionPlanId}':
-    post:
-      tags:
-        - account
-      operationId: subscribeToPlan
-      description: Subscribe customer to a aplan
-      summary: Subscribe customer to a aplan
-      security:
-        - CustomerSecurity: []
-          ApiKeyHeader: []
-        - CustomerSecurity: []
-          ApiKeyParam: []
-      parameters:
-        - name: subscriptionPlanId
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        content:
-          application/vnd.api+json:
-            schema:
-              $ref: '#/components/schemas/CreditcardDataRequest'
-        description: Payment info
-        required: true
-      responses:
-        '202':
-          description: Accepted the request to subscribe to plan
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-    delete:
-      tags:
-        - account
-      description: Cancel a subscription to a plan
-      summary: Cancel a subscription to a plan
-      operationId: cancelSubscription
-      security:
-        - CustomerSecurity: []
-          ApiKeyHeader: []
-        - CustomerSecurity: []
-          ApiKeyParam: []
-      parameters:
-        - name: subscriptionPlanId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '202':
-          description: Accepted the request to cancel a customer subscription
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-  '/accounts/verify_email/{verificationToken}':
-    post:
-      tags:
-        - account
-      description: Verifies customer ownership (double opt-in)
-      summary: Customer verification (double opt-in)
-      operationId: verify
-      security:
-        - CustomerSecurity: []
-          ApiKeyHeader: []
-        - CustomerSecurity: []
-          ApiKeyParam: []
-      parameters:
-        - name: verificationToken
-          in: path
-          description: Verification token sent via email after `send-activation-email` request
-          required: true
-          schema:
-            type: string
-      responses:
-        '202':
-          description: Accepted the account verification request
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  '/accounts/subscribe':
-    post:
-      tags:
-        - account
-      operationId: subscribeCustomer
-      description: Allows customer registration with reduced data field (aka express register)
-      summary: Customer reduced registration
-      security:
-        - ApiKeyHeader: []
-        - ApiKeyParam: []
-      requestBody:
-        content:
-          application/vnd.api+json:
-            schema:
-              $ref: '#/components/schemas/SubscribeCustomer'
-        description: Required fields for the customer subscription
-        required: true
-      responses:
-        '201':
-          description: Successful response after a customer has been subscribed
-          content:
-            application/vnd.api+json:
-              schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  '/accounts/subscriptions':
-    get:
-      tags:
-        - account
-      description: List customer subscriptions
-      summary: List customer subscriptions
-      operationId: getSubscriptions
-      security:
-        - CustomerSecurity: []
-          ApiKeyHeader: []
-        - CustomerSecurity: []
-          ApiKeyParam: []
-      responses:
-        '200':
-          description: Successful response
-          content:
-            application/vnd.api+json:
-              schema:
-                $ref: '#/components/schemas/SubscriptionsResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-
-  '/accounts/reset-password':
-    post:
-      tags:
-        - account
-      operationId: resetCustomerPasswords
-      description: Customer password reset
-      summary: Customer password reset
-      security:
-        - ApiKeyHeader: []
-        - ApiKeyParam: []
-      requestBody:
-        content:
-          application/vnd.api+json:
-            schema:
-              $ref: '#/components/schemas/ResetPassword'
-        description: Required fields for the password reset
-        required: true
-      responses:
-        '202':
-          description: Accepted the request to reset account password
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  '/accounts/reset-password-request':
-    post:
-      tags:
-        - account
-      operationId: resetCustomerPasswordRequest
-      description: Request customer password reset token
-      summary: Request customer password reset token
-      security:
-        - ApiKeyHeader: []
-        - ApiKeyParam: []
-      requestBody:
-        content:
-          application/vnd.api+json:
-            schema:
-              $ref: '#/components/schemas/ResetPasswordRequest'
-        description: Required fields for the password reset request
-        required: true
-      responses:
-        '202':
-          description: Accepted the request to reset account password
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  '/accounts/legal-age':
-    post:
-      tags:
-        - account
-      summary: Customer legal age confirmation
-      description: Specific confirmation from the customer that she is older than the Spanish legal age (18yo)
-      operationId: setHasLegalAge
-      security:
-        - CustomerSecurity: []
-          ApiKeyHeader: []
-        - CustomerSecurity: []
-          ApiKeyParam: []
-      responses:
-        '202':
-          description: Accepted the request to set the customer as of legal age
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  '/accounts/newsletter':
-    post:
-      tags:
-        - account
-      description: Customer newsletter enable
-      summary: Customer newsletter enable
-      operationId: newsletterSubscribe
-      security:
-        - CustomerSecurity: []
-          ApiKeyHeader: []
-        - CustomerSecurity: []
-          ApiKeyParam: []
-      responses:
-        '202':
-          description: Accepted the request to activate the newsletter subscription
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '500':
-          $ref: '#/components/responses/InternalError'
-    delete:
-      tags:
-        - account
-      description: Customer newsletter disable
-      summary: Customer newsletter disable
-      operationId: newsletterUnsubscribe
-      security:
-        - CustomerSecurity: []
-          ApiKeyHeader: []
-        - CustomerSecurity: []
-          ApiKeyParam: []
-      responses:
-        '202':
-          description: Accepted the request to cancel the newsletter subscription
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  '/accounts/credit-cards/{creditCardId}':
-    delete:
-      tags:
-        - account
-      summary: Remove customer credit card
-      description: Remove customer credit card
-      operationId: removeCreditCard
-      security:
-        - CustomerSecurity: []
-          ApiKeyHeader: []
-        - CustomerSecurity: []
-          ApiKeyParam: []
-      parameters:
-        - name: creditCardId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '202':
-          description: Accepted the request to remove a customer credit card
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  '/accounts/invitation-url':
-    get:
-      tags:
-        - account
-      operationId: getReferralUrl
-      description: Obtains the URL that the customer can use to obtain referrals from (member get member)
-      summary: Customer invitation URL
-      security:
-        - CustomerSecurity: []
-          ApiKeyHeader: []
-        - CustomerSecurity: []
-          ApiKeyParam: []
-      responses:
-        '200':
-          description: Accepted the request to change customer password
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  '/accounts/addresses/{addressId}/update-invoice-data':
-    put:
-      tags:
-        - account
-      description: Update customer address invoice data
-      summary: Update customer address invoice data
-      operationId: updateInvoiceData
-      security:
-        - CustomerSecurity: []
-          ApiKeyHeader: []
-        - CustomerSecurity: []
-          ApiKeyParam: []
-      parameters:
-        - name: addressId
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        content:
-          application/vnd.api+json:
-            schema:
-              $ref: '#/components/schemas/UpdateInvoiceData'
-        description: Required fields for the invoice data update
-        required: true
-      responses:
-        '202':
-          description: Accepted the request to update invoice data
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  '/accounts/addresses/{addressId}/update-lift-state':
-    put:
-      tags:
-        - account
-      summary: Updates the customer address lift flag
-      description: Updates the customer address lift flag
-      operationId: updateLift
-      security:
-        - CustomerSecurity: []
-          ApiKeyHeader: []
-        - CustomerSecurity: []
-          ApiKeyParam: []
-      parameters:
-        - name: addressId
-          in: path
-          required: true
-          schema:
-            type: integer
-        - name: customer_token
-          in: query
-          description: Customer token taken from previous authentication
-          required: false
-          schema:
-            type: string
-      requestBody:
-        content:
-          application/vnd.api+json:
-            schema:
-              $ref: '#/components/schemas/UpdateLift'
-        description: Required fields for the lift state update
-        required: true
-      responses:
-        '202':
-          description: Accepted the request to update lift state
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  '/accounts':
+  /accounts:
     get:
       tags:
         - account
@@ -633,7 +228,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
-  '/accounts/addresses':
+  /accounts/addresses:
     post:
       tags:
         - account
@@ -661,7 +256,393 @@ paths:
           $ref: '#/components/responses/InternalError'
       description: Account address list
       summary: Account address list
-  '/accounts/register':
+  '/accounts/subscriptions/{subscriptionPlanId}':
+    post:
+      tags:
+        - account
+        - subscription
+      operationId: subscribeToPlan
+      description: Subscribe customer to a aplan
+      summary: Subscribe customer to a aplan
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: subscriptionPlanId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/CreditcardDataRequest'
+        description: Payment info
+        required: true
+      responses:
+        '202':
+          description: Accepted the request to subscribe to plan
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - account
+        - subscription
+      description: Cancel a subscription to a plan
+      summary: Cancel a subscription to a plan
+      operationId: cancelSubscription
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: subscriptionPlanId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Accepted the request to cancel a customer subscription
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  '/accounts/verify_email/{verificationToken}':
+    post:
+      tags:
+        - account
+      description: Verifies customer ownership (double opt-in)
+      summary: Customer verification (double opt-in)
+      operationId: verify
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: verificationToken
+          in: path
+          description: Verification token sent via email after `send-activation-email` request
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Accepted the account verification request
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /accounts/subscribe:
+    post:
+      tags:
+        - account
+      operationId: subscribeCustomer
+      description: Allows customer registration with reduced data field (aka express register)
+      summary: Customer reduced registration
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/SubscribeCustomer'
+        description: Required fields for the customer subscription
+        required: true
+      responses:
+        '201':
+          description: Successful response after a customer has been subscribed
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /accounts/subscriptions:
+    get:
+      tags:
+        - account
+        - subscription
+      description: List customer subscriptions
+      summary: List customer subscriptions
+      operationId: getSubscriptions
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/SubscriptionsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /accounts/reset-password:
+    post:
+      tags:
+        - account
+      operationId: resetCustomerPasswords
+      description: Customer password reset
+      summary: Customer password reset
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/ResetPassword'
+        description: Required fields for the password reset
+        required: true
+      responses:
+        '202':
+          description: Accepted the request to reset account password
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /accounts/reset-password-request:
+    post:
+      tags:
+        - account
+      operationId: resetCustomerPasswordRequest
+      description: Request customer password reset token
+      summary: Request customer password reset token
+      security:
+        - ApiKeyHeader: []
+        - ApiKeyParam: []
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+        description: Required fields for the password reset request
+        required: true
+      responses:
+        '202':
+          description: Accepted the request to reset account password
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /accounts/legal-age:
+    post:
+      tags:
+        - account
+      summary: Customer legal age confirmation
+      description: Specific confirmation from the customer that she is older than the Spanish legal age (18yo)
+      operationId: setHasLegalAge
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      responses:
+        '202':
+          description: Accepted the request to set the customer as of legal age
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /accounts/newsletter:
+    post:
+      tags:
+        - account
+      description: Customer newsletter enable
+      summary: Customer newsletter enable
+      operationId: newsletterSubscribe
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      responses:
+        '202':
+          description: Accepted the request to activate the newsletter
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    delete:
+      tags:
+        - account
+      description: Customer newsletter disable
+      summary: Customer newsletter disable
+      operationId: newsletterUnsubscribe
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      responses:
+        '202':
+          description: Accepted the request to cancel the newsletter
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  '/accounts/credit-cards/{creditCardId}':
+    delete:
+      tags:
+        - account
+      summary: Remove customer credit card
+      description: Remove customer credit card
+      operationId: removeCreditCard
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: creditCardId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '202':
+          description: Accepted the request to remove a customer credit card
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /accounts/invitation-url:
+    get:
+      tags:
+        - account
+      operationId: getReferralUrl
+      description: Obtains the URL that the customer can use to obtain referrals from (member get member)
+      summary: Customer invitation URL
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      responses:
+        '200':
+          description: Accepted the request to change customer password
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  '/accounts/addresses/{addressId}/update-invoice-data':
+    put:
+      tags:
+        - account
+      description: Update customer address invoice data
+      summary: Update customer address invoice data
+      operationId: updateInvoiceData
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: addressId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/UpdateInvoiceData'
+        description: Required fields for the invoice data update
+        required: true
+      responses:
+        '202':
+          description: Accepted the request to update invoice data
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  '/accounts/addresses/{addressId}/update-lift-state':
+    put:
+      tags:
+        - account
+      summary: Updates the customer address lift flag
+      description: Updates the customer address lift flag
+      operationId: updateLift
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: addressId
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: customer_token
+          in: query
+          description: Customer token taken from previous authentication
+          required: false
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/vnd.api+json:
+            schema:
+              $ref: '#/components/schemas/UpdateLift'
+        description: Required fields for the lift state update
+        required: true
+      responses:
+        '202':
+          description: Accepted the request to update lift state
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /accounts/register:
     post:
       tags:
         - account
@@ -691,8 +672,7 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
-
-  '/accounts/send-activation-email':
+  /accounts/send-activation-email:
     post:
       tags:
         - account
@@ -720,7 +700,6 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
-
   '/accounts/addresses/{addressId}':
     put:
       tags:
@@ -836,10 +815,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
-  '/banners':
+  /banners:
     get:
       tags:
-        - banners
+        - other
       description: Get banners list
       summary: Get banners list
       operationId: listAction
@@ -849,14 +828,14 @@ paths:
       parameters:
         - name: postal_code
           in: query
-          description: 'The customer postal code while customer is not logged in'
+          description: The customer postal code while customer is not logged in
           required: false
           schema:
             type: string
-            example: '08001'
+            example: 08001
       responses:
         '200':
-          description: 'Successful response'
+          description: Successful response
           content:
             application/vnd.api+json:
               schema:
@@ -868,7 +847,7 @@ paths:
   '/brands/{brandId}/products':
     get:
       tags:
-        - brands
+        - catalogue
       description: 'Get products of a brand, including brand related data'
       summary: 'Get products of a brand, including brand related data'
       operationId: getBrandProducts
@@ -914,10 +893,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
-  '/carts':
+  /carts:
     get:
       tags:
-        - carts
+        - cart
       description: Retrieves the current cart. Note that cartId could be innexistent
       summary: Retrieves the current cart. Note that cartId could be innexistent
       operationId: currentCartDetails
@@ -952,10 +931,128 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
+  '/carts/{cartId}':
+    get:
+      tags:
+        - cart
+      description: Retrieves the current cart from the cart ID
+      summary: Retrieves the current cart from the cart ID
+      operationId: getCartDetailsById
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cartId
+          in: path
+          description: ID of the cart
+          required: true
+          schema:
+            anyOf:
+              - type: integer
+                minimum: 1
+                description: Cart Id
+              - type: string
+                description: Cart Secret
+      responses:
+        '200':
+          description: Successful response after a has been found
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/CartsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  '/carts/{cartId}/from-order/{orderId}':
+    post:
+      tags:
+        - cart
+      description: Create a new cart from a given order
+      summary: Create a new cart from a given order
+      operationId: createCartFromOrderAction
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cartId
+          in: path
+          description: The cart to add products to
+          required: true
+          schema:
+            type: integer
+        - name: orderId
+          in: path
+          description: The order to retrieve products from
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Compact Cart merged
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/CompactCartsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    patch:
+      tags:
+        - cart
+      description: Add products from a given order to the cart
+      summary: Add products from a given order to the cart
+      operationId: addProductsToCartFromOrder
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cartId
+          in: path
+          description: The cart to add products to
+          required: true
+          schema:
+            type: integer
+        - name: orderId
+          in: path
+          description: The order to retrieve products from
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Compact Cart merged
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/CompactCartsResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
   '/carts/{cartId}/unmerge':
     post:
       tags:
-        - carts
+        - cart
       description: Unmerge a cart
       summary: Unmerge a cart
       operationId: postCartUnmerge
@@ -987,7 +1084,8 @@ paths:
   '/carts/{cartId}/paypal-checkout':
     post:
       tags:
-        - carts
+        - cart
+        - checkout
       operationId: paypalCheckout
       security:
         - CustomerSecurity: []
@@ -1026,7 +1124,8 @@ paths:
   '/carts/{cartId}/payment-method/{paymentMethod}':
     post:
       tags:
-        - carts
+        - cart
+        - checkout
       operationId: selectPaymentMethod
       security:
         - CustomerSecurity: []
@@ -1060,7 +1159,8 @@ paths:
   '/carts/{cartId}/start-checkout':
     post:
       tags:
-        - carts
+        - cart
+        - checkout
       description: Start the checkout of a given cart.
       summary: Start the checkout of a given cart.
       operationId: startCheckout
@@ -1085,10 +1185,39 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
+  '/carts/paypal-checkout/{cartId}':
+    get:
+      deprecated: true
+      tags:
+        - cart
+        - checkout
+      description: Paypal checkout (deprecated)
+      summary: Paypal checkout (deprecated)
+      operationId: paypalCheckoutDeprecated
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      parameters:
+        - name: cartId
+          in: path
+          description: The cart id going to be paid using PayPal
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Successful response after a checkout
+          content:
+            application/vnd.api+json:
+              schema:
+                $ref: '#/components/schemas/PaypalCheckoutResponse'
   '/carts/{cartId}/donation':
     patch:
       tags:
-        - carts
+        - cart
+        - checkout
       operationId: patchCartDonation
       security:
         - CustomerSecurity: []
@@ -1128,7 +1257,7 @@ paths:
       summary: Assign donation NGO to the cart
     delete:
       tags:
-        - carts
+        - cart
       description: Remove NGO donation from cart
       summary: Remove NGO donation from cart
       operationId: deleteCartDonation
@@ -1160,7 +1289,7 @@ paths:
   '/carts/{cartId}/order/{orderId}/merge':
     get:
       tags:
-        - carts
+        - cart
       description: Check a cart merge with an order
       summary: Check a cart merge with an order
       operationId: getCartWithOrderMerge
@@ -1197,7 +1326,7 @@ paths:
           $ref: '#/components/responses/InternalError'
     post:
       tags:
-        - carts
+        - cart
       description: Merge a cart with an order
       summary: Merge a cart with an order
       operationId: postCartMergeWithOrder
@@ -1235,7 +1364,8 @@ paths:
   '/carts/{cartId}/delivery':
     put:
       tags:
-        - carts
+        - cart
+        - checkout
       description: Assigns delivery data (slot) to cart
       summary: Assigns delivery data (slot) to cart
       operationId: defineDeliveryData
@@ -1273,11 +1403,11 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
-
   '/carts/{cartId}/delivery-address':
     put:
       tags:
-        - carts
+        - cart
+        - checkout
       operationId: updateDeliveryAddress
       description: Assign delivery address to cart
       summary: Assign delivery address to cart
@@ -1315,51 +1445,11 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
-
-  '/carts/{cartId}':
-    get:
-      tags:
-        - carts
-      description: Retrieves the current cart from the cart ID
-      summary: Retrieves the current cart from the cart ID
-      operationId: getCartDetailsById
-      security:
-        - CustomerSecurity: []
-          ApiKeyHeader: []
-        - CustomerSecurity: []
-          ApiKeyParam: []
-      parameters:
-        - name: cartId
-          in: path
-          description: ID of the cart
-          required: true
-          schema:
-            anyOf:
-              - type: integer
-                minimum: 1
-                description: Cart Id
-              - type: string
-                description: Cart Secret
-      responses:
-        '200':
-          description: Successful response after a has been found
-          content:
-            application/vnd.api+json:
-              schema:
-                $ref: '#/components/schemas/CartsResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
-  '/carts/checkout':
+  /carts/checkout:
     post:
       tags:
-        - carts
+        - cart
+        - checkout
       description: Checkout current cart
       summary: Checkout current cart
       operationId: cartCheckout
@@ -1382,11 +1472,10 @@ paths:
             application/vnd.api+json:
               schema:
                 $ref: '#/components/schemas/Order'
-
-  '/carts/discounts':
+  /carts/discounts:
     post:
       tags:
-        - carts
+        - cart
       description: Apply an available customer discount to the cart
       summary: Apply an available customer discount to the cart
       operationId: applyDiscount
@@ -1420,7 +1509,7 @@ paths:
     delete:
       deprecated: true
       tags:
-        - carts
+        - cart
       description: Remove discount from applied discounts in the cart.     DEPRECATE as DELETE requests MUST NOT have a requestBody
       summary: Remove discount from applied discounts in the cart.     DEPRECATE as DELETE requests MUST NOT have a requestBody
       operationId: removeDiscountDeprecated
@@ -1447,7 +1536,7 @@ paths:
   '/carts/discounts/{discountId}':
     delete:
       tags:
-        - carts
+        - cart
       description: Remove discount from applied discounts in the cart
       summary: Remove discount from applied discounts in the cart
       operationId: removeDiscount
@@ -1476,38 +1565,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
-  '/carts/paypal-checkout/{cartId}':
-    get:
-      deprecated: true
-      tags:
-        - carts
-      description: Paypal checkout (deprecated)
-      summary: Paypal checkout (deprecated)
-      operationId: paypalCheckoutDeprecated
-      security:
-        - CustomerSecurity: []
-          ApiKeyHeader: []
-        - CustomerSecurity: []
-          ApiKeyParam: []
-      parameters:
-        - name: cartId
-          in: path
-          description: The cart id going to be paid using PayPal
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Successful response after a checkout
-          content:
-            application/vnd.api+json:
-              schema:
-                $ref: '#/components/schemas/PaypalCheckoutResponse'
-
-  '/carts/products':
+  /carts/products:
     post:
       tags:
-        - carts
+        - cart
       description: Add product items to cart
       summary: Add product items to cart
       operationId: addCartItem
@@ -1536,91 +1597,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
-
-  '/carts/{cartId}/from-order/{orderId}':
-    post:
-      tags:
-        - carts
-      description: Create a new cart from a given order
-      summary: Create a new cart from a given order
-      operationId: createCartFromOrderAction
-      security:
-        - CustomerSecurity: []
-          ApiKeyHeader: []
-        - CustomerSecurity: []
-          ApiKeyParam: []
-      parameters:
-        - name: cartId
-          in: path
-          description: The cart to add products to
-          required: true
-          schema:
-            type: integer
-        - name: orderId
-          in: path
-          description: The order to retrieve products from
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Compact Cart merged
-          content:
-            application/vnd.api+json:
-              schema:
-                $ref: '#/components/schemas/CompactCartsResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalError'
-    patch:
-      tags:
-        - carts
-      description: Add products from a given order to the cart
-      summary: Add products from a given order to the cart
-      operationId: addProductsToCartFromOrder
-      security:
-        - CustomerSecurity: []
-          ApiKeyHeader: []
-        - CustomerSecurity: []
-          ApiKeyParam: []
-      parameters:
-        - name: cartId
-          in: path
-          description: The cart to add products to
-          required: true
-          schema:
-            type: integer
-        - name: orderId
-          in: path
-          description: The order to retrieve products from
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Compact Cart merged
-          content:
-            application/vnd.api+json:
-              schema:
-                $ref: '#/components/schemas/CompactCartsResponse'
-        '400':
-          $ref: '#/components/responses/BadRequest'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '500':
-          $ref: '#/components/responses/InternalError'
-
   '/categories/{categoryId}/products':
     get:
       tags:
-        - categories
+        - catalogue
       description: Get category products
       summary: Get category products
       operationId: getCategoryProducts
@@ -1675,13 +1655,12 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
-
   '/custom-query/{slug}/products':
     get:
       tags:
-        - campaigns
-      description: Get custom query products
-      summary: Get custom query products
+        - catalogue
+      description: Get campaign (custom-query) products
+      summary: Get campaign products
       operationId: getCustomQueryProducts
       security:
         - ApiKeyHeader: []
@@ -1734,11 +1713,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
-
-  '/deliveries/services':
+  /deliveries/services:
     get:
       tags:
-        - delivery
+        - checkout
       description: Get the list of delivery services
       summary: Get the list of delivery services
       operationId: getDeliveryServices
@@ -1771,10 +1749,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
-  '/deliveries/available-services':
+  /deliveries/available-services:
     get:
       tags:
-        - delivery
+        - checkout
       description: Get the list of delivery services
       summary: Get the list of delivery services
       operationId: getAvailableDeliveryServices
@@ -1800,11 +1778,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
-
-  '/deliveries/slots':
+  /deliveries/slots:
     get:
       tags:
-        - delivery
+        - checkout
       description: Get the list of delivery slots for a cart
       summary: Get the list of delivery slots for a cart
       operationId: getDeliverySlots
@@ -1837,11 +1814,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
-
-  '/donation/ngos':
+  /donation/ngos:
     get:
       tags:
-        - donation
+        - checkout
       description: Get the list of NGOs
       summary: Get the list of NGOs
       operationId: getDonationNgos
@@ -1871,12 +1847,11 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
-
-  '/features':
+  /features:
     get:
       tags:
-        - features
-      operationId: get-features
+        - other
+      operationId: getFeatures
       security:
         - CustomerSecurity: []
           ApiKeyHeader: []
@@ -1894,21 +1869,20 @@ paths:
           content:
             application/vnd.api+json:
               schema:
-                $ref: '#/components/schemas/_error'
+                $ref: '#/components/schemas/ErrorsResponse'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
       description: Customer features
       summary: Customer features
-
-  '/markets/availability':
+  /markets/availability:
     get:
       tags:
-        - markets
+        - catalogue
       description: Get markets list availables in the provided postal code
       summary: Get markets list availables in the provided postal code
-      operationId: marketAvailabilityAction
+      operationId: marketAvailability
       security:
         - ApiKeyHeader: []
         - ApiKeyParam: []
@@ -1932,14 +1906,13 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
-
   '/markets/{marketId}/stalls':
     get:
       tags:
-        - markets
+        - catalogue
       description: Get stall list by market id
       summary: Get stall list by market id
-      operationId: marketStallsAction
+      operationId: marketStalls
       security:
         - ApiKeyHeader: []
         - ApiKeyParam: []
@@ -1968,10 +1941,10 @@ paths:
   '/manufacturers/{manufacturerId}/brands':
     get:
       tags:
-        - manufacturers
+        - catalogue
       description: Get the brands of a manufacturer
       summary: Get the brands of a manufacturer
-      operationId: ManufacturerBrands
+      operationId: manufacturerBrands
       security:
         - ApiKeyHeader: []
         - ApiKeyParam: []
@@ -1997,12 +1970,11 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
-
   '/orders/{orderId}/cancel':
     post:
       tags:
         - order
-      operationId: cancelOrderAction
+      operationId: cancelOrder
       security:
         - CustomerSecurity: []
           ApiKeyHeader: []
@@ -2028,7 +2000,6 @@ paths:
           $ref: '#/components/responses/InternalError'
       description: Request an Order cancelation
       summary: Request an Order cancelation
-
   '/orders/{orderId}/products':
     get:
       tags:
@@ -2063,8 +2034,7 @@ paths:
           $ref: '#/components/responses/InternalError'
       description: Obtain list of products of an order
       summary: Obtain list of products of an order
-
-  '/orders/last-orders':
+  /orders/last-orders:
     get:
       tags:
         - order
@@ -2089,8 +2059,7 @@ paths:
           $ref: '#/components/responses/InternalError'
       description: List previous orders
       summary: List previous orders
-
-  '/orders/reopenable':
+  /orders/reopenable:
     get:
       tags:
         - order
@@ -2115,11 +2084,10 @@ paths:
           $ref: '#/components/responses/InternalError'
       description: List orders that can be reopened
       summary: List orders that can be reopened
-
-  '/payments/available-methods':
+  /payments/available-methods:
     get:
       tags:
-        - payment
+        - checkout
       description: List available payment methods
       summary: List available payment methods
       operationId: availableMethodsAction
@@ -2137,11 +2105,10 @@ paths:
                   $ref: '#/components/schemas/PaymentMethod'
         '401':
           $ref: '#/components/responses/Unauthorized'
-
-  '/platform':
+  /platform:
     get:
       tags:
-        - platform
+        - other
       description: Platform status
       summary: Platform status
       operationId: getPlatformStatus
@@ -2161,11 +2128,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
-
   '/products/{productId}':
     get:
       tags:
-        - products
+        - catalogue
       description: Get product info
       summary: Get product info
       operationId: getProductDetails
@@ -2192,11 +2158,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
-
   '/products/{productId}/alternatives':
     get:
       tags:
-        - products
+        - catalogue
       description: Get products alternatives for a specific product
       summary: Get products alternatives for a specific product
       operationId: getProductAlternatives
@@ -2223,11 +2188,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
-
   '/products/{productId}/availability-notification':
     post:
       tags:
-        - products
+        - catalogue
       description: Create a new notification alert for logged customer when product is available again
       summary: Create a new notification alert for logged customer when product is available again
       operationId: createProductAvailabilityNotification
@@ -2256,11 +2220,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
-
   '/products/{productId}/related':
     get:
       tags:
-        - products
+        - catalogue
       description: Get related products for a specific product
       summary: Get related products for a specific product
       operationId: getProductRelatedProducts
@@ -2289,11 +2252,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
-
-  '/products/most-purchased':
+  /products/most-purchased:
     get:
       tags:
-        - products
+        - catalogue
       description: Get products most purchased products
       summary: Get products most purchased products
       operationId: mostPurchasedProducts
@@ -2313,11 +2275,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
-
-  '/products/recommend':
+  /products/recommend:
     get:
       tags:
-        - products
+        - catalogue
       description: Get products recommendation according to the given user and the preset
       summary: Product recommendations
       operationId: getProductsRecommendation
@@ -2351,11 +2312,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
-
-  '/products/search':
+  /products/search:
     get:
       tags:
-        - products
+        - catalogue
       description: Get products according a search criteria
       summary: Get products according a search criteria
       operationId: productSearch
@@ -2385,7 +2345,7 @@ paths:
             default: 60
         - name: postal_code
           in: query
-          description: 'The customer postal code while is not logged in'
+          description: The customer postal code while is not logged in
           required: false
           schema:
             type: string
@@ -2409,7 +2369,7 @@ paths:
               - created_at.desc
         - name: filters
           in: query
-          description: 'Json formatted and urlencoded filters collection'
+          description: Json formatted and urlencoded filters collection
           required: false
           schema:
             type: string
@@ -2427,11 +2387,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '500':
           $ref: '#/components/responses/InternalError'
-
   '/static/{slug}':
     get:
       tags:
-        - static
+        - other
       description: Retrieves a static page
       summary: Retrieves a static page
       operationId: getStaticPage
@@ -2470,11 +2429,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
-
   '/translations/{locale}':
     get:
       tags:
-        - translations
+        - other
       description: Obtain translation
       summary: Obtain translation
       operationId: translationLiterals
@@ -2497,11 +2455,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
-
-  '/url/metadata':
+  /url/metadata:
     get:
       tags:
-        - url
+        - other
       description: Get url metadata
       summary: Get url metadata
       operationId: metadataAction
@@ -2528,7 +2485,27 @@ paths:
           $ref: '#/components/responses/NotFound'
         '500':
           $ref: '#/components/responses/InternalError'
-
+  /accounts/credit-cards:
+    post:
+      tags:
+        - account
+      summary: Add customer credit card
+      description: Add customer credit card
+      operationId: addCreditCard
+      security:
+        - CustomerSecurity: []
+          ApiKeyHeader: []
+        - CustomerSecurity: []
+          ApiKeyParam: []
+      responses:
+        '201':
+          description: Credit Card successfully added
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalError'
 components:
   securitySchemes:
     ApiKeyParam:
@@ -2548,7 +2525,6 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-
   schemas:
     UrlMetadata_filters:
       description: UrlMetadata_filters
@@ -2693,51 +2669,6 @@ components:
                 - es
                 - en
                 - ca
-    UpdateInvoiceData_data:
-      description: UpdateInvoiceData_data
-      properties:
-        type:
-          type: string
-          enum:
-            - customer
-        id:
-          type: integer
-        attributes:
-          $ref: '#/components/schemas/UpdateInvoiceData_data_attributes'
-    UpdateInvoiceData_data_attributes:
-      description: UpdateInvoiceData_data_attributes
-      required:
-        - address_id
-        - invoice_person_type
-        - nif
-      properties:
-        address_id:
-          type: integer
-          description: Address containing the invoice data to be updated
-        invoice_person_type:
-          type: string
-          description: "invoice person type when invoice requested -> allowed values ['legal','natural']"
-          enum:
-            - natural
-            - legal
-        nif:
-          type: string
-          description: invoice nif when invoice requested
-        company:
-          type: string
-          description: invoice company when invoice requested
-        invoice_name:
-          type: string
-          description: invoice name when invoice requested
-        invoice_first_surname:
-          type: string
-          description: customer first surname when invoice requested
-        invoice_second_surname:
-          type: string
-          description: customer second surname when invoice requested
-        invoice_email:
-          type: string
-          description: 'email used to send the invoices to, by default is the same as the customer email'
     EditAddress_data:
       description: EditAddress_data
       properties:
@@ -3350,16 +3281,6 @@ components:
             $ref: '#/components/schemas/ImageMedia'
         main:
           $ref: '#/components/schemas/ImageMedia'
-    _error_error:
-      description: _error_error
-      required:
-        - code
-        - message
-      properties:
-        message:
-          type: string
-        code:
-          type: integer
     UrlMetadataResponse:
       description: UrlMetadataResponse
       properties:
@@ -5022,7 +4943,6 @@ components:
               nullable: true
             attributes:
               $ref: '#/components/schemas/RegisterCustomer_dataAttributes'
-
     CustomerFeaturesResponse:
       description: CustomerFeaturesResponse
       type: object
@@ -5031,39 +4951,166 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CustomerFeature'
-
-    _error:
-      description: _error
+    LegacyError:
+      description: LegacyError
+      properties:
+        code:
+          type: integer
+          description: Internal code number for the error
+        key:
+          type: string
+          description: Internal code name for the error
+        literal:
+          type: string
+          description: Literal error message on the same language than requested using headers
+    Error:
+      description: Error
+      properties:
+        status:
+          type: integer
+          description: Internal code number for the error
+        key:
+          type: string
+          description: Internal code name for the error
+        literal:
+          type: string
+          description: Literal error message on the same language than requested using headers
+    ErrorsResponse:
+      description: Errors response
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Error'
+    ErrorResponse:
+      description: Error response
       type: object
       properties:
         error:
-          $ref: '#/components/schemas/_error_error'
-
+          $ref: '#/components/schemas/LegacyError'
+    UpdateInvoiceData_data_attributes:
+      description: UpdateInvoiceData_data_attributes
+      required:
+        - address_id
+        - invoice_person_type
+        - nif
+      properties:
+        address_id:
+          type: integer
+          description: Address containing the invoice data to be updated
+        invoice_person_type:
+          type: string
+          description: "invoice person type when invoice requested -> allowed values ['legal','natural']"
+          enum:
+            - natural
+            - legal
+        nif:
+          type: string
+          description: invoice nif when invoice requested
+        company:
+          type: string
+          description: invoice company when invoice requested
+        invoice_name:
+          type: string
+          description: invoice name when invoice requested
+        invoice_first_surname:
+          type: string
+          description: customer first surname when invoice requested
+        invoice_second_surname:
+          type: string
+          description: customer second surname when invoice requested
+        invoice_email:
+          type: string
+          description: 'email used to send the invoices to, by default is the same as the customer email'
+    UpdateInvoiceData_data:
+      description: UpdateInvoiceData_data
+      properties:
+        type:
+          type: string
+          enum:
+            - customer
+        id:
+          type: integer
+        attributes:
+          $ref: '#/components/schemas/UpdateInvoiceData_data_attributes'
+    AddCreditCardRequest:
+      description: AddCreditCardRequest
+      type: object
+      x-examples:
+        example:
+          data:
+            type: credit-card
+            attributes:
+              number: '1111222233334444'
+              cardholder_name: PEPITO PERES
+              cvv: '123'
+              exp_month: '11'
+              exp_year: '29'
+      properties:
+        data:
+          type: object
+          properties:
+            attributes:
+              type: object
+              properties:
+                number:
+                  type: string
+                  description: Credit card number
+                  example: 1111222233334444
+                cardholder_name:
+                  type: string
+                  description: Name on card
+                  example: PEPITO PERES
+                cvv:
+                  type: string
+                  description: 'Security code on the back of the card (3|4 digits)'
+                  example: 123
+                exp_month:
+                  type: string
+                  description: Expiration month (2 digits)
+                  example: 11
+                exp_year:
+                  type: string
+                  description: Expiration year (2 digits)
+                  example: 29
+            type:
+              type: string
+              enum:
+                - credit-card
   responses:
     BadRequest:
       description: The request does not have all the expected data or is not in the expected format
       content:
         application/vnd.api+json:
           schema:
-            $ref: '#/components/schemas/_error'
+            oneOf:
+              - $ref: '#/components/schemas/ErrorsResponse'
+              - $ref: '#/components/schemas/ErrorResponse'
     Conflict:
       description: The request can not be applied
       content:
         application/vnd.api+json:
           schema:
-            $ref: '#/components/schemas/_error'
+            oneOf:
+              - $ref: '#/components/schemas/ErrorsResponse'
+              - $ref: '#/components/schemas/ErrorResponse'
     Forbidden:
       description: 'Access Forbidden, you must authorize yourself with a customer token'
       content:
         application/vnd.api+json:
           schema:
-            $ref: '#/components/schemas/_error'
+            oneOf:
+              - $ref: '#/components/schemas/ErrorsResponse'
+              - $ref: '#/components/schemas/ErrorResponse'
     InternalError:
       description: 'Internal Error. Something unexpected happened while processing the request, contact technical support'
       content:
         application/vnd.api+json:
           schema:
-            $ref: '#/components/schemas/_error'
+            oneOf:
+              - $ref: '#/components/schemas/ErrorsResponse'
+              - $ref: '#/components/schemas/ErrorResponse'
     NoContent:
       description: No content
     NotFound:
@@ -5071,10 +5118,14 @@ components:
       content:
         application/vnd.api+json:
           schema:
-            $ref: '#/components/schemas/_error'
+            oneOf:
+              - $ref: '#/components/schemas/ErrorsResponse'
+              - $ref: '#/components/schemas/ErrorResponse'
     Unauthorized:
       description: 'Unauthorized request: api_key and/or customer_token is missing or invalid'
       content:
         application/vnd.api+json:
           schema:
-            $ref: '#/components/schemas/_error'
+            oneOf:
+              - $ref: '#/components/schemas/ErrorsResponse'
+              - $ref: '#/components/schemas/ErrorResponse'
